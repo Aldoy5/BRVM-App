@@ -715,7 +715,7 @@ final isMarketRefreshingProvider =
 /// Notifier pour l'horodatage de la dernière mise à jour
 class LastMarketUpdateTimeNotifier extends Notifier<DateTime> {
   @override
-  DateTime build() => DateTime(2026, 10, 28, 11, 30);
+  DateTime build() => DateTime.now();
 
   void updateTime(DateTime time) => state = time;
 }

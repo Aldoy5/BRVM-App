@@ -1,149 +1,123 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants.dart';
 import '../../../core/extensions.dart';
-import '../../../core/formatters.dart';
 import '../../../core/models/stock.dart';
 
-/// Ligne d'affichage d'une action dans la liste de cotation du marché
+/// Ligne d'affichage minimaliste d'une action pour la liste de cotation du marché
 class StockListTile extends StatelessWidget {
   final Stock stock;
   final VoidCallback? onTap;
+  final bool showDivider;
 
   const StockListTile({
     super.key,
     required this.stock,
     this.onTap,
+    this.showDivider = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final variationColor = stock.dailyVariation.financialColor;
-    final variationBg = stock.dailyVariation.financialBackgroundColor;
+    final variation = stock.dailyVariation;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              // Badge mnémonique
-              Container(
-                width: 56,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  stock.code,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
+    // Détermination de la couleur selon le signe : vert pour +, rouge pour -, noir pour 0
+    final Color variationColor;
+    if (variation > 0.0001) {
+      variationColor = AppColors.gain;
+    } else if (variation < -0.0001) {
+      variationColor = AppColors.loss;
+    } else {
+      variationColor = AppColors.textPrimary;
+    }
 
-              // Nom et secteur
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      stock.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            stock.sector,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+    // Formatage de la variation en pourcentage (+0,8 %, -1,95 %, 0,0 %)
+    final String variationText;
+    if (variation.abs() < 0.0001) {
+      variationText = '0,0 %';
+    } else {
+      final sign = variation > 0 ? '+' : '';
+      final numStr = NumberFormat('#,##0.0#', 'fr_FR').format(variation);
+      variationText = '$sign$numStr %';
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  // Côté gauche : Code (gras) + Nom (plus clair, plus petit, en ligne)
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: stock.code,
                             style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: AppColors.textPrimary,
                             ),
                           ),
-                        ),
-                        if (stock.volume > 0) ...[
-                          const Text(' • ', style: TextStyle(color: AppColors.textTertiary)),
-                          Text(
-                            'Vol. ${stock.volume.toFormattedString()}',
+                          const TextSpan(text: '  '),
+                          TextSpan(
+                            text: stock.name,
                             style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textTertiary,
+                              fontWeight: FontWeight.w400,
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-
-              // Cours et badge de variation
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    formatFCFA(stock.currentPrice),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: variationBg,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          stock.isGaining
-                              ? Icons.arrow_drop_up_rounded
-                              : (stock.isLosing
-                                  ? Icons.arrow_drop_down_rounded
-                                  : Icons.remove),
-                          size: 16,
+                  const SizedBox(width: 12),
+
+                  // Côté droit : Cours (gras, aligné à droite) + Variation % dessous en couleur
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        stock.currentPrice.toFormattedString(),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        variationText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                           color: variationColor,
                         ),
-                        Text(
-                          stock.dailyVariation.toVariationPercent(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: variationColor,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        if (showDivider)
+          const Divider(
+            height: 1,
+            thickness: 0.8,
+            color: Color(0xFFF0F0F0),
+          ),
+      ],
     );
   }
 }

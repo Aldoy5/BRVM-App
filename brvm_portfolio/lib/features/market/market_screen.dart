@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../core/constants.dart';
 import 'market_providers.dart';
 import 'market_sync_service.dart';
 import 'widgets/stock_list_tile.dart';
 
-/// Écran Marché affichant l'ensemble de la cote BRVM avec recherche, tri et mise à jour continue
+/// Écran Marché affichant l'ensemble de la cote BRVM avec un design épuré et minimaliste
 class MarketScreen extends ConsumerStatefulWidget {
   const MarketScreen({super.key});
 
@@ -19,6 +18,14 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -26,228 +33,260 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final stocks = ref.watch(filteredMarketStocksProvider);
-    final allStocks = ref.watch(marketStocksProvider);
-    final selectedFilter = ref.watch(marketFilterProvider);
-    final selectedSort = ref.watch(marketSortProvider);
-    final sessionStatus = ref.watch(currentSessionStatusProvider);
-    final lastUpdated = ref.watch(lastMarketUpdateTimeProvider);
-    final isRefreshing = ref.watch(isMarketRefreshingProvider);
+    // Synchronisation en arrière-plan des cotations
+    ref.watch(marketSyncServiceProvider);
 
-    final timeFormatter = DateFormat('HH:mm:ss', 'fr_FR');
-    final formattedTime = timeFormatter.format(lastUpdated.toLocal());
+    final stocks = ref.watch(filteredMarketStocksProvider);
+    final selectedFilter = ref.watch(marketFilterProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Marché BRVM (${allStocks.length} titres)',
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-            ),
-            Row(
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () => ref.read(marketStocksProvider.notifier).refreshLiveQuotes(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: sessionStatus.isLive ? AppColors.gain : AppColors.neutral,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  sessionStatus.isLive
-                      ? 'En direct différé 15 min • $formattedTime'
-                      : 'Séance fermée • $formattedTime',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: sessionStatus.isLive ? AppColors.gain : AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Actualiser la cote en direct',
-            icon: isRefreshing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                  )
-                : const Icon(Icons.refresh, color: AppColors.primary),
-            onPressed: isRefreshing
-                ? null
-                : () => ref.read(marketStocksProvider.notifier).refreshLiveQuotes(),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (val) {
-                ref.read(marketSearchQueryProvider.notifier).updateQuery(val);
-              },
-              decoration: InputDecoration(
-                hintText: 'Rechercher un titre (ex: SNTS, SGBC, CORIS)...',
-                prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 20),
-                        onPressed: () {
-                          _searchController.clear();
-                          ref.read(marketSearchQueryProvider.notifier).clear();
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: AppColors.surfaceVariant,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-      body: Column(
-        children: [
-          // Barre de filtres et de tri
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.white,
-            child: Row(
-              children: [
-                // Filtres de statut
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: StockFilter.values.map((filter) {
-                        final isSelected = selectedFilter == filter;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(filter.label),
-                            selected: isSelected,
-                            onSelected: (_) {
-                              ref.read(marketFilterProvider.notifier).selectFilter(filter);
-                            },
-                            labelStyle: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected ? Colors.white : AppColors.textPrimary,
-                            ),
-                            selectedColor: AppColors.primary,
-                            backgroundColor: AppColors.surfaceVariant,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        );
-                      }).toList(),
+                // Titre principal 'Marché' en grand et gras en haut à gauche
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Marché',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.5,
                     ),
                   ),
                 ),
+                const SizedBox(height: 20),
 
-                // Menu de tri
-                PopupMenuButton<StockSort>(
-                  icon: const Icon(Icons.sort, color: AppColors.primary),
-                  tooltip: 'Trier la cote',
-                  initialValue: selectedSort,
-                  onSelected: (sort) {
-                    ref.read(marketSortProvider.notifier).selectSort(sort);
-                  },
-                  itemBuilder: (context) => StockSort.values.map((sort) {
-                    return PopupMenuItem<StockSort>(
-                      value: sort,
-                      child: Row(
-                        children: [
-                          Icon(
-                            selectedSort == sort
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_off,
-                            size: 18,
-                            color: selectedSort == sort ? AppColors.primary : AppColors.textTertiary,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(sort.label, style: const TextStyle(fontSize: 14)),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+                // Petit label 'Rechercher un titre'
+                const Text(
+                  'Rechercher un titre',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ],
-            ),
-          ),
+                const SizedBox(height: 8),
 
-          // Liste des titres avec pull-to-refresh
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => ref.read(marketStocksProvider.notifier).refreshLiveQuotes(),
-              child: stocks.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                // Champ de recherche avec placeholder 'Code ou nom'
+                TextField(
+                  controller: _searchController,
+                  onChanged: (val) {
+                    ref.read(marketSearchQueryProvider.notifier).updateQuery(val);
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Code ou nom',
+                    hintStyle: const TextStyle(
+                      fontSize: 16,
+                      color: AppColors.textTertiary,
+                    ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18, color: AppColors.textSecondary),
+                            onPressed: () {
+                              _searchController.clear();
+                              ref.read(marketSearchQueryProvider.notifier).clear();
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border, width: 1),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border, width: 1),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 3 onglets de filtres dans un conteneur arrondi : 'Tous', 'Hausses', 'Baisses'
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildFilterTab(
+                          label: 'Tous',
+                          filter: StockFilter.all,
+                          isSelected: selectedFilter == StockFilter.all,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildFilterTab(
+                          label: 'Hausses',
+                          filter: StockFilter.gainers,
+                          isSelected: selectedFilter == StockFilter.gainers,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildFilterTab(
+                          label: 'Baisses',
+                          filter: StockFilter.losers,
+                          isSelected: selectedFilter == StockFilter.losers,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Liste des titres dans un conteneur style carte avec bordure subtile
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE5E5E5), width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: stocks.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.search_off_rounded,
+                                  size: 48,
+                                  color: AppColors.textTertiary,
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Aucun titre correspondant',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Vérifiez l\'orthographe ou changez de filtre.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : Column(
                           children: [
-                            const Icon(
-                              Icons.search_off_rounded,
-                              size: 56,
-                              color: AppColors.textTertiary,
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Aucun titre correspondant',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
+                            for (int i = 0; i < stocks.length; i++)
+                              StockListTile(
+                                stock: stocks[i],
+                                onTap: () => context.push('/stock/${stocks[i].code}'),
+                                showDivider: true,
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Vérifiez l\'orthographe ou changez de filtre.',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
+                            // Au bas de la liste, points de suspension (...) et icône menu ⋯
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '...',
+                                    style: TextStyle(
+                                      color: AppColors.textTertiary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.more_horiz,
+                                    color: AppColors.textTertiary,
+                                    size: 20,
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    )
-                  : ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      itemCount: stocks.length,
-                      itemBuilder: (context, index) {
-                        final stock = stocks[index];
-                        return StockListTile(
-                          stock: stock,
-                          onTap: () => context.push('/stock/${stock.code}'),
-                        );
-                      },
-                    ),
+                ),
+                const SizedBox(height: 16),
+
+                // Texte de pied de page
+                const Text(
+                  'Cours indicatifs, sans garantie. Mis à jour après la clôture.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textTertiary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  /// Onglet de filtre personnalisé avec fond blanc si sélectionné (comme dans la maquette)
+  Widget _buildFilterTab({
+    required String label,
+    required StockFilter filter,
+    required bool isSelected,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        ref.read(marketFilterProvider.notifier).selectFilter(filter);
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  )
+                ]
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: AppColors.textPrimary,
+          ),
+        ),
       ),
     );
   }

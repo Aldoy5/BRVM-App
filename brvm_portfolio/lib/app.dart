@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'core/constants.dart';
 import 'core/theme.dart';
 import 'features/history/history_screen.dart';
 import 'features/market/market_screen.dart';
@@ -41,6 +42,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/market',
                 builder: (context, state) => const MarketScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'stock/:code',
+                    builder: (context, state) {
+                      final code = state.pathParameters['code'] ?? '';
+                      return StockDetailScreen(stockCode: code);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -57,13 +67,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // Fiche détaillée d'un titre
+      // Redirection /stock/:code vers /market/stock/:code pour conserver la barre de navigation
       GoRoute(
         path: '/stock/:code',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) {
+        redirect: (context, state) {
           final code = state.pathParameters['code'] ?? '';
-          return StockDetailScreen(stockCode: code);
+          return '/market/stock/$code';
         },
       ),
 
@@ -94,7 +103,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Scaffold englobant avec NavigationBar Material 3 et FAB "+"
+/// Scaffold englobant avec BottomAppBar minimaliste et FAB central "+"
 class AppScaffold extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
@@ -110,37 +119,88 @@ class AppScaffold extends StatelessWidget {
     );
   }
 
+  Widget _buildNavItem({
+    required BuildContext context,
+    required int index,
+    required String label,
+  }) {
+    final isSelected = navigationShell.currentIndex == index;
+
+    return InkWell(
+      onTap: () => _onDestinationSelected(index),
+      child: Center(
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          context.push('/operation/add');
-        },
-        tooltip: 'Ajouter une opération',
-        child: const Icon(Icons.add, size: 28),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: _onDestinationSelected,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
-            label: 'Portefeuille',
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(color: AppColors.border, width: 0.8),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.show_chart_rounded),
-            selectedIcon: Icon(Icons.trending_up_rounded),
-            label: 'Marché',
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _buildNavItem(
+                    context: context,
+                    index: 0,
+                    label: 'Portefeuille',
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: _buildNavItem(
+                    context: context,
+                    index: 1,
+                    label: 'Marché',
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => context.push('/operation/add'),
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF237A4B),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 28),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: _buildNavItem(
+                    context: context,
+                    index: 2,
+                    label: 'Historique',
+                  ),
+                ),
+              ],
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Historique',
-          ),
-        ],
+        ),
       ),
     );
   }

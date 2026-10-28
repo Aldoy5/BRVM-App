@@ -9,7 +9,7 @@ import '../portfolio/portfolio_providers.dart';
 import 'widgets/price_chart.dart';
 
 /// Écran Fiche Titre détaillée pour une action BRVM
-class StockDetailScreen extends ConsumerWidget {
+class StockDetailScreen extends ConsumerStatefulWidget {
   final String stockCode;
 
   const StockDetailScreen({
@@ -18,468 +18,403 @@ class StockDetailScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final stock = ref.watch(stockByCodeProvider(stockCode));
-    final position = ref.watch(positionByStockCodeProvider(stockCode));
+  ConsumerState<StockDetailScreen> createState() => _StockDetailScreenState();
+}
+
+class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
+  String _selectedPeriod = '1M';
+
+  @override
+  Widget build(BuildContext context) {
+    final stock = ref.watch(stockByCodeProvider(widget.stockCode));
+    final position = ref.watch(positionByStockCodeProvider(widget.stockCode));
 
     if (stock == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(stockCode)),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: AppColors.loss),
-              const SizedBox(height: 12),
-              Text(
-                'Titre "$stockCode" introuvable',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => context.pop(),
-                child: const Text('Retour à la liste'),
-              ),
-            ],
+        backgroundColor: const Color(0xFFF6F4EE),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: () => context.pop(),
+                  behavior: HitTestBehavior.opaque,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      '← Marché',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF4A4A4A),
+                      ),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, size: 48, color: AppColors.loss),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Titre "${widget.stockCode}" introuvable',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => context.pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1F7A4D),
+                        ),
+                        child: const Text('Retour à la liste'),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    final variationColor = stock.dailyVariation.financialColor;
-    final variationBg = stock.dailyVariation.financialBackgroundColor;
+    final sign = stock.dailyVariation > 0 ? '+' : (stock.dailyVariation < 0 ? '-' : '');
+    final varAmount = '$sign${stock.variationAmount.abs().toFormattedString()}';
+    final varPct = '($sign${stock.dailyVariation.abs().toStringAsFixed(1).replaceAll('.', ',')} %)';
+    final variationText = '$varAmount $varPct aujourd’hui';
+    final variationColor = stock.dailyVariation > 0
+        ? const Color(0xFF1F7A4D)
+        : (stock.dailyVariation < 0 ? AppColors.loss : const Color(0xFF757575));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('${stock.code} - ${stock.name}'),
-        actions: [
-          IconButton(
-            tooltip: 'Partager le cours',
-            icon: const Icon(Icons.share_outlined),
-            onPressed: () {
-              context.showAppSnackBar('Cours partagé : ${stock.name} à ${formatFCFA(stock.currentPrice)}');
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // En-tête : Titre, Secteur et Cours
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          stock.code,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          stock.sector,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  Text(
-                    stock.name,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+      backgroundColor: const Color(0xFFF6F4EE),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Lien retour "← Marché"
+              GestureDetector(
+                onTap: () => context.pop(),
+                behavior: HitTestBehavior.opaque,
+                child: const Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    '← Marché',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF4A4A4A),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                ),
+              ),
 
-                  // Grand cours actuel + Variation
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        formatFCFA(stock.currentPrice),
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
+              // Titre : Code · Nom
+              Text(
+                '${stock.code} · ${stock.name}',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1C1B1F),
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Grand cours actuel (ex: 25 000 FCFA)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    stock.currentPrice.toFormattedString(),
+                    style: const TextStyle(
+                      fontSize: 38,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1C1B1F),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'FCFA',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1C1B1F),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+
+              // Texte de variation : +200 (+0,8 %) aujourd'hui
+              Text(
+                variationText,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: variationColor,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Section Graphique dans une carte blanche aux bords arrondis
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE5E2D9), width: 1),
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PriceChart(
+                      prices: stock.historicalPrices,
+                      isGaining: stock.isGaining,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Onglets de période : 1M (sélectionné), 6M, 1A
+                    Container(
+                      height: 44,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECE8DC),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: variationBg,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              stock.isGaining
-                                  ? Icons.arrow_drop_up_rounded
-                                  : (stock.isLosing
-                                      ? Icons.arrow_drop_down_rounded
-                                      : Icons.remove),
-                              size: 18,
-                              color: variationColor,
-                            ),
-                            Text(
-                              '${stock.dailyVariation.toVariationPercent()} (${stock.variationAmount.toVariationFCFA()})',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: variationColor,
+                      child: Row(
+                        children: ['1M', '6M', '1A'].map((period) {
+                          final isSelected = _selectedPeriod == period;
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedPeriod = period;
+                                });
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: isSelected ? Colors.white : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: isSelected
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.05),
+                                            blurRadius: 2,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  period,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                    color: isSelected ? const Color(0xFF1C1B1F) : const Color(0xFF4A4A4A),
+                                  ),
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                          );
+                        }).toList(),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Dernière cotation : ${stock.lastUpdated.toDateTimeString()}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textTertiary,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Mini-graphique de tendance
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Évolution récente du cours',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        '7 dernières séances',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  PriceChart(
-                    prices: stock.historicalPrices,
-                    isGaining: stock.isGaining,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Caractéristiques de la séance
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Statistiques de la séance',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatItem('Cours Veille', formatFCFA(stock.previousClosePrice)),
-                      ),
-                      Expanded(
-                        child: _buildStatItem('Cours Ouverture', formatFCFA(stock.openingPrice > 0 ? stock.openingPrice : stock.previousClosePrice)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatItem('Cours Clôture / Actuel', formatFCFA(stock.currentPrice)),
-                      ),
-                      Expanded(
-                        child: _buildStatItem('Volume échangé', stock.volume.toFormattedString()),
-                      ),
-                    ],
-                  ),
-                  if (stock.dayHigh > 0 && stock.dayLow > 0) ...[
                     const SizedBox(height: 14),
+
+                    // Légende en bas de carte
+                    const Text(
+                      'Historique en construction depuis la mise en service.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Section "Ma position" dans une carte blanche
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE5E2D9), width: 1),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ma position',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, color: Color(0xFFEBE8E0)),
+                    const SizedBox(height: 12),
+
+                    // Quantité
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          child: _buildStatItem('Plus haut (Jour)', formatFCFA(stock.dayHigh)),
+                        const Text(
+                          'Quantité',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF1C1B1F),
+                          ),
                         ),
-                        Expanded(
-                          child: _buildStatItem('Plus bas (Jour)', formatFCFA(stock.dayLow)),
+                        Text(
+                          position != null ? '${position.quantity}' : '0',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1C1B1F),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, color: Color(0xFFEBE8E0)),
+                    const SizedBox(height: 12),
+
+                    // Prix de revient (PRU)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Prix de revient (PRU)',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF1C1B1F),
+                          ),
+                        ),
+                        Text(
+                          position != null ? formatFCFA(position.pru.round()) : '—',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1C1B1F),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, color: Color(0xFFEBE8E0)),
+                    const SizedBox(height: 12),
+
+                    // Plus-value latente
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Plus-value latente',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF1C1B1F),
+                          ),
+                        ),
+                        Text(
+                          position != null
+                              ? '${position.totalGainLoss >= 0 ? '+' : ''}${formatFCFA(position.totalGainLoss.round()).replaceAll(' FCFA', '')} (${position.totalGainLossPercent >= 0 ? '+' : ''}${position.totalGainLossPercent.toStringAsFixed(1).replaceAll('.', ',')} %)'
+                              : '—',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: position != null
+                                ? (position.totalGainLoss >= 0 ? const Color(0xFF1F7A4D) : AppColors.loss)
+                                : const Color(0xFF1C1B1F),
+                          ),
                         ),
                       ],
                     ),
                   ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
-            // Section "Ma Position dans ce titre" (si détenu ou non)
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Deux boutons côte à côte : Acheter (vert, plus large) + Vendre (contour blanc/sombre)
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.account_balance_wallet_outlined,
-                        size: 20,
-                        color: AppColors.primary,
+                  Expanded(
+                    flex: 5,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        context.push(
+                          '/operation/add?stockCode=${stock.code}&type=achat',
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1F7A4D),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Ma position en portefeuille',
+                      child: const Text(
+                        'Acheter',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 4,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        context.push(
+                          '/operation/add?stockCode=${stock.code}&type=vente',
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF1C1B1F),
+                        backgroundColor: Colors.transparent,
+                        elevation: 0,
+                        minimumSize: const Size.fromHeight(50),
+                        side: const BorderSide(color: Color(0xFF1C1B1F), width: 1.2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Vendre',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: Color(0xFF1C1B1F),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
-
-                  if (position != null) ...[
-                    // Carte détaillée de la position
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildPositionMetric('Titres détenus', '${position.quantity} actions'),
-                              _buildPositionMetric('Prix Moyen (PRU)', formatFCFA(position.pru.round())),
-                            ],
-                          ),
-                          const Divider(height: 24, color: AppColors.border),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildPositionMetric('Valorisation', formatFCFA(position.totalValuation)),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Text(
-                                    'Plus-value latente',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${position.totalGainLoss.toVariationFCFA()} (${position.totalGainLossPercent.toVariationPercent()})',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: position.totalGainLoss.financialColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ] else ...[
-                    // Message titre non détenu
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.info_outline, color: AppColors.textSecondary),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Vous ne possédez pas encore de ligne sur ce titre.',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Bouton Vendre (disponible si position > 0)
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    context.push(
-                      '/operation/add?stockCode=${stock.code}&type=vente',
-                    );
-                  },
-                  icon: const Icon(Icons.remove_circle_outline, color: AppColors.loss),
-                  label: const Text(
-                    'Vendre',
-                    style: TextStyle(color: AppColors.loss),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.loss, width: 1.5),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // Bouton Acheter (Action principale)
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    context.push(
-                      '/operation/add?stockCode=${stock.code}&type=achat',
-                    );
-                  },
-                  icon: const Icon(Icons.add_shopping_cart),
-                  label: const Text('Acheter'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.gain,
-                  ),
-                ),
-              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPositionMetric(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ],
     );
   }
 }

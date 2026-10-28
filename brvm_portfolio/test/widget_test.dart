@@ -11,7 +11,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Vérifie que l'écran Portefeuille s'affiche correctement
-    expect(find.text('Mon Portefeuille'), findsOneWidget);
+    // Vérifie que l'écran Portefeuille s'affiche correctement avec sa valorisation totale
+    expect(find.text('Valorisation totale'), findsOneWidget);
   });
 }

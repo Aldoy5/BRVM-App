@@ -126,7 +126,7 @@ final portfolioSummaryProvider = Provider<PortfolioSummary>((ref) {
     dailyGainLossPercent: dailyGainLossPercent,
     totalGainLoss: totalGainLoss,
     totalGainLossPercent: totalGainLossPercent,
-    marketDate: DateTime(2026, 10, 28, 15, 30),
+    marketDate: ref.watch(lastMarketUpdateTimeProvider),
     positionsCount: positions.length,
   );
 });

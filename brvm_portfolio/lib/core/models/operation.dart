@@ -114,4 +114,37 @@ class Operation {
       notes: notes ?? this.notes,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'type': type.name,
+      'stockCode': stockCode,
+      'stockName': stockName,
+      'quantity': quantity,
+      'unitPrice': unitPrice,
+      'fees': fees,
+      'cashAmount': cashAmount,
+      'date': date.toIso8601String(),
+      'notes': notes,
+    };
+  }
+
+  factory Operation.fromJson(Map<String, dynamic> json) {
+    return Operation(
+      id: json['id'] as String,
+      type: OperationType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => OperationType.achat,
+      ),
+      stockCode: json['stockCode'] as String?,
+      stockName: json['stockName'] as String?,
+      quantity: (json['quantity'] as num?)?.toInt(),
+      unitPrice: (json['unitPrice'] as num?)?.toInt(),
+      fees: (json['fees'] as num?)?.toInt() ?? 0,
+      cashAmount: (json['cashAmount'] as num?)?.toInt(),
+      date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
+      notes: json['notes'] as String?,
+    );
+  }
 }

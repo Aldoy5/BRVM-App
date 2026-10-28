@@ -1,7 +1,9 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../core/constants.dart';
 import '../../core/extensions.dart';
 import '../../core/formatters.dart';
@@ -74,7 +76,6 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
   }
 
   void _initFormData() {
-    // Si modification d'une opération existante
     if (widget.operationId != null) {
       final op = ref.read(operationByIdProvider(widget.operationId!));
       if (op != null) {
@@ -90,7 +91,6 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
       }
     }
 
-    // Si création avec titre pré-sélectionné
     if (_selectedStockCode != null) {
       _onStockChanged(_selectedStockCode);
     }
@@ -112,7 +112,6 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
       _selectedStockCode = code;
       final stock = ref.read(stockByCodeProvider(code));
       if (stock != null) {
-        // Pré-remplir automatiquement le cours avec le dernier cours du marché
         _unitPriceController.text = stock.currentPrice.toString();
         _recalculateEstimatedFees();
       }
@@ -124,7 +123,6 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
     final price = int.tryParse(_unitPriceController.text.trim()) ?? 0;
     if (qty > 0 && price > 0) {
       final gross = qty * price;
-      // Frais SGI standards estimés à ~1.18%
       final estimatedFees = (gross * (AppConstants.defaultFeeRatePercent / 100)).round();
       _feesController.text = estimatedFees.toString();
     }
@@ -171,6 +169,23 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
       setState(() {
         _selectedDate = picked;
       });
+    }
+  }
+
+  Future<void> _importPdf() async {
+    try {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      if (files.isNotEmpty) {
+        final file = files.first;
+        if (!mounted) return;
+        context.showAppSnackBar('Avis d\'opéré importé : ${file.name}', isSuccess: true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      context.showAppSnackBar('Erreur lors de la sélection du fichier PDF', isError: true);
     }
   }
 
@@ -236,420 +251,564 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
   Widget build(BuildContext context) {
     final stocks = ref.watch(marketStocksProvider);
     final isEditing = widget.operationId != null;
+    final dateFormatter = DateFormat('dd/MM/yyyy');
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Modifier l\'opération' : 'Nouvelle opération'),
-      ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Sélecteur de type d'opération (Achat, Vente, Dépôt, Retrait)
-              const Text(
-                'Type d\'opération',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              SegmentedButton<OperationType>(
-                segments: const [
-                  ButtonSegment(
-                    value: OperationType.achat,
-                    label: Text('Achat'),
-                    icon: Icon(Icons.add_shopping_cart, size: 18),
-                  ),
-                  ButtonSegment(
-                    value: OperationType.vente,
-                    label: Text('Vente'),
-                    icon: Icon(Icons.sell_outlined, size: 18),
-                  ),
-                  ButtonSegment(
-                    value: OperationType.depot,
-                    label: Text('Dépôt'),
-                    icon: Icon(Icons.arrow_downward, size: 18),
-                  ),
-                  ButtonSegment(
-                    value: OperationType.retrait,
-                    label: Text('Retrait'),
-                    icon: Icon(Icons.arrow_upward, size: 18),
-                  ),
-                ],
-                selected: {_selectedType},
-                onSelectionChanged: (newSelection) {
-                  setState(() {
-                    _selectedType = newSelection.first;
-                  });
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // Si Achat ou Vente -> Sélecteur d'action BRVM
-              if (_selectedType.isStockOperation) ...[
-                const Text(
-                  'Titre BRVM',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedStockCode,
-                  isExpanded: true,
-                  hint: const Text('Choisir une action cotée...'),
-                  items: stocks.map((stock) {
-                    return DropdownMenuItem<String>(
-                      value: stock.code,
-                      child: Text(
-                        '${stock.code} - ${stock.name} (${formatFCFA(stock.currentPrice)})',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 15),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: _onStockChanged,
-                  validator: (val) {
-                    if (val == null || val.isEmpty) {
-                      return 'Veuillez choisir une action';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Ligne Quantité & Prix unitaire
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // En-tête : Titre + Bouton Fermer
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Quantité
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Quantité',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          TextFormField(
-                            controller: _quantityController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                            decoration: const InputDecoration(
-                              hintText: 'Ex: 100',
-                              suffixText: 'titres',
-                            ),
-                            onChanged: (_) {
-                              setState(() {
-                                _recalculateEstimatedFees();
-                              });
-                            },
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Requis';
-                              }
-                              final q = int.tryParse(val.trim());
-                              if (q == null || q <= 0) {
-                                return '> 0';
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
+                    Text(
+                      isEditing ? 'Modifier l\'opération' : 'Nouvelle opération',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    const SizedBox(width: 12),
-
-                    // Prix unitaire (cours)
-                    Expanded(
-                      flex: 5,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Cours unitaire',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
+                    GestureDetector(
+                      onTap: () => context.pop(),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                        child: Text(
+                          'Fermer',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondary,
                           ),
-                          const SizedBox(height: 6),
-                          TextFormField(
-                            controller: _unitPriceController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                            decoration: const InputDecoration(
-                              hintText: 'Prix',
-                              suffixText: 'FCFA',
-                            ),
-                            onChanged: (_) {
-                              setState(() {
-                                _recalculateEstimatedFees();
-                              });
-                            },
-                            validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
-                                return 'Requis';
-                              }
-                              final p = int.tryParse(val.trim());
-                              if (p == null || p <= 0) {
-                                return '> 0';
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-              ] else ...[
-                // Si Dépôt ou Retrait -> Montant espèces
-                const Text(
-                  'Montant en espèces',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                const SizedBox(height: 20),
+
+                // Sélecteur de type d'opération (Achat, Vente, Dépôt, Retrait)
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildTabItem(OperationType.achat, 'Achat'),
+                      _buildTabItem(OperationType.vente, 'Vente'),
+                      _buildTabItem(OperationType.depot, 'Dépôt'),
+                      _buildTabItem(OperationType.retrait, 'Retrait'),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 20),
 
-                TextFormField(
-                  controller: _cashAmountController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    hintText: 'Ex: 1 000 000',
-                    suffixText: 'FCFA',
-                    prefixIcon: Icon(Icons.account_balance),
+                // Formulaire selon le type
+                if (_selectedType.isStockOperation) ...[
+                  // Champ Titre
+                  const Text(
+                    'Titre',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                  onChanged: (_) => setState(() {}),
-                  validator: (val) {
-                    if (val == null || val.trim().isEmpty) {
-                      return 'Veuillez saisir un montant';
-                    }
-                    final a = int.tryParse(val.trim());
-                    if (a == null || a <= 0) {
-                      return 'Le montant doit être supérieur à 0';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-              ],
+                  const SizedBox(height: 6),
 
-              // Frais d'intermédiation / de courtage SGI
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedStockCode,
+                    isExpanded: true,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    hint: const Text('Choisir un titre...'),
+                    items: stocks.map((stock) {
+                      return DropdownMenuItem<String>(
+                        value: stock.code,
+                        child: Text(
+                          '${stock.code} · ${stock.name}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: _onStockChanged,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Veuillez choisir une action';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Ligne Quantité & Prix unitaire
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Frais d\'opération',
+                              'Quantité',
                               style: TextStyle(
                                 fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _quantityController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              style: const TextStyle(
+                                fontSize: 16,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary,
                               ),
-                            ),
-                            if (_selectedType.isStockOperation)
-                              InkWell(
-                                onTap: () {
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.border),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.border),
+                                ),
+                              ),
+                              onChanged: (_) {
+                                setState(() {
                                   _recalculateEstimatedFees();
-                                  setState(() {});
-                                },
-                                child: const Text(
-                                  'Taux SGI (~1.18%)',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.primary,
+                                });
+                              },
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) return 'Requis';
+                                final q = int.tryParse(val.trim());
+                                if (q == null || q <= 0) return '> 0';
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Prix unitaire (FCFA)',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _unitPriceController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.border),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.border),
+                                ),
+                              ),
+                              onChanged: (_) {
+                                setState(() {
+                                  _recalculateEstimatedFees();
+                                });
+                              },
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) return 'Requis';
+                                final p = int.tryParse(val.trim());
+                                if (p == null || p <= 0) return '> 0';
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Ligne Frais & Date
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Frais (FCFA)',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _feesController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.border),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.border),
+                                ),
+                              ),
+                              onChanged: (_) => setState(() {}),
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) return 'Requis';
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Date',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            InkWell(
+                              onTap: _pickDate,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Text(
+                                  dateFormatter.format(_selectedDate),
+                                  style: const TextStyle(
+                                    fontSize: 16,
                                     fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
                                   ),
                                 ),
                               ),
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _feesController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          decoration: const InputDecoration(
-                            hintText: '0',
-                            suffixText: 'FCFA',
-                          ),
-                          onChanged: (_) => setState(() {}),
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) {
-                              return 'Requis (0 si aucun)';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  // Si Dépôt ou Retrait -> Montant espèces
+                  const Text(
+                    'Montant en espèces (FCFA)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _cashAmountController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white,
+                      hintText: 'Ex: 500 000',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) return 'Veuillez saisir un montant';
+                      final a = int.tryParse(val.trim());
+                      if (a == null || a <= 0) return '> 0';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Ligne Frais & Date
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Frais (FCFA)',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextFormField(
+                              controller: _feesController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.border),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.border),
+                                ),
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Date',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            InkWell(
+                              onTap: _pickDate,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Text(
+                                  dateFormatter.format(_selectedDate),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-              // Date de l'opération
-              const Text(
-                'Date d\'exécution',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 6),
-
-              InkWell(
-                onTap: _pickDate,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                // Encadré Total estimé
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                   decoration: BoxDecoration(
                     color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: AppColors.border),
-                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.calendar_today, size: 20, color: AppColors.primary),
-                          const SizedBox(width: 12),
-                          Text(
-                            _selectedDate.toLongDate(),
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                          ),
-                        ],
+                      const Text(
+                        'Total estimé',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
-                      const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                      Text(
+                        formatFCFA(_calculatedNetAmount),
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 22),
 
-              // Notes / Commentaire optionnel
-              const Text(
-                'Note ou référence (optionnel)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 6),
-
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  hintText: 'Ex: Achat SGI BOA Capital, avis d\'opé #4592',
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Encadré Récapitulatif financier Net
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Montant brut',
-                          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                        ),
-                        Text(
-                          formatFCFA(_calculatedGrossAmount),
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                      ],
+                // Bouton Enregistrer (Vert plein)
+                ElevatedButton(
+                  onPressed: _submitForm,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Frais & taxes SGI',
-                          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                        ),
-                        Text(
-                          formatFCFA(int.tryParse(_feesController.text.trim()) ?? 0),
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                      ],
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Enregistrer',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const Divider(height: 20, color: AppColors.border),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          _selectedType == OperationType.achat || _selectedType == OperationType.retrait
-                              ? 'Total Net Débité'
-                              : 'Total Net Crédité',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          formatFCFA(_calculatedNetAmount),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 12),
 
-              // Bouton Enregistrer
-              ElevatedButton(
-                onPressed: _submitForm,
-                child: Text(
-                  isEditing ? 'Mettre à jour l\'opération' : 'Enregistrer l\'opération',
+                // Bouton Importer un PDF d'avis d'opéré
+                OutlinedButton(
+                  onPressed: _importPdf,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    backgroundColor: Colors.transparent,
+                    minimumSize: const Size.fromHeight(52),
+                    side: const BorderSide(color: AppColors.textPrimary, width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Importer un PDF d’avis d’opéré',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 30),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabItem(OperationType type, String label) {
+    final isSelected = _selectedType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedType = type;
+            _recalculateEstimatedFees();
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    )
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
       ),

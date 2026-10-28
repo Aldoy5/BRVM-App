@@ -1,185 +1,128 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants.dart';
-import '../../../core/extensions.dart';
 import '../../../core/formatters.dart';
 import '../../../core/models/position.dart';
 
-/// Ligne d'affichage d'une position détenue dans le portefeuille
+/// Ligne d'affichage d'une position détenue dans le portefeuille selon le design mockup
 class PositionListTile extends StatelessWidget {
   final Position position;
   final VoidCallback? onTap;
+  final bool showDivider;
 
   const PositionListTile({
     super.key,
     required this.position,
     this.onTap,
+    this.showDivider = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final dailyColor = position.dailyVariation.financialColor;
-    final totalGainColor = position.totalGainLoss.financialColor;
+    final dailyGainLoss = position.dailyGainLoss;
+    final dailyVariation = position.dailyVariation;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Column(
-            children: [
-              // Ligne supérieure : Code, Nom et Valorisation totale
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Badge mnémonique
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      position.stockCode,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        color: AppColors.primary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
+    // Couleur financière (vert gain / rouge perte / gris neutre)
+    final Color dailyColor = dailyGainLoss > 0
+        ? AppColors.gain
+        : (dailyGainLoss < 0 ? AppColors.loss : AppColors.neutral);
 
-                  // Nom du titre et quantité
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          position.stockName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${position.quantity} actions • PRU : ${formatFCFA(position.pru.round())}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+    // Formatage de la variation journalière en FCFA (+12 000)
+    final String amountSign = dailyGainLoss > 0 ? '+' : (dailyGainLoss < 0 ? '-' : '');
+    final String dailyAmountStr = '$amountSign${AppFormatters.formatInteger(dailyGainLoss.abs())}';
 
-                  // Valorisation totale actuelle
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+    // Formatage du pourcentage (+0,8 %)
+    final String pctSign = dailyVariation > 0 ? '+' : (dailyVariation < 0 ? '-' : '');
+    final String pctValue = NumberFormat('0.##', 'fr_FR').format(dailyVariation.abs());
+    final String dailyPctStr = '$pctSign$pctValue %';
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Côté gauche : ticker gras + 'N titres' plus clair inline, montant investi en dessous
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: position.stockCode,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            TextSpan(
+                              text: '  ${position.quantity} titres',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
                       Text(
-                        formatFCFA(position.totalValuation),
+                        formatFCFA(position.investedAmount),
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Cours : ${formatFCFA(position.currentPrice)}',
-                        style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
                           color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              // Séparateur fin
-              const Divider(height: 1, color: AppColors.divider),
-              const SizedBox(height: 8),
-
-              // Ligne inférieure : Performance du jour et Plus-value latente totale
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  // Variation journalière
-                  Row(
-                    children: [
-                      const Text(
-                        'Jour : ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
+                ),
+                const SizedBox(width: 12),
+                // Côté droit : variation du jour en montant (+12 000, gras, coloré) et en % (+0,8 %, coloré, en dessous)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      dailyAmountStr,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: dailyColor,
                       ),
-                      Text(
-                        position.dailyVariation.toVariationPercent(),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: dailyColor,
-                        ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      dailyPctStr,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: dailyColor,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '(${position.dailyGainLoss.toVariationFCFA()})',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: dailyColor,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Plus-value latente globale
-                  Row(
-                    children: [
-                      const Text(
-                        'PV latente : ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: position.totalGainLoss.financialColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '${position.totalGainLoss.toVariationFCFA()} (${position.totalGainLossPercent.toVariationPercent()})',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: totalGainColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
+        if (showDivider)
+          const Divider(
+            height: 1,
+            thickness: 1,
+            indent: 16,
+            endIndent: 16,
+            color: AppColors.divider,
+          ),
+      ],
     );
   }
 }

@@ -1,4 +1,7 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/models/operation.dart';
 
 /// Filtre des opérations pour l'historique
@@ -12,104 +15,47 @@ enum HistoryFilter {
   const HistoryFilter(this.label);
 }
 
-/// Liste initiale d'opérations d'exemple réalistes
-final List<Operation> kInitialOperations = [
-  Operation(
-    id: 'op-001',
-    type: OperationType.depot,
-    cashAmount: 15000000,
-    fees: 0,
-    date: DateTime(2026, 9, 1, 10, 0),
-    notes: 'Virement initial vers compte SGI',
-  ),
-  Operation(
-    id: 'op-002',
-    type: OperationType.achat,
-    stockCode: 'SNTS',
-    stockName: 'Sonatel Sénégal',
-    quantity: 250,
-    unitPrice: 18200,
-    fees: 53690, // ~1.18%
-    date: DateTime(2026, 9, 5, 11, 15),
-    notes: 'Achat carnet principal',
-  ),
-  Operation(
-    id: 'op-003',
-    type: OperationType.achat,
-    stockCode: 'SGBC',
-    stockName: 'Société Générale Côte d\'Ivoire',
-    quantity: 150,
-    unitPrice: 16500,
-    fees: 29205,
-    date: DateTime(2026, 9, 12, 14, 20),
-    notes: 'Renforcement secteur bancaire',
-  ),
-  Operation(
-    id: 'op-004',
-    type: OperationType.achat,
-    stockCode: 'PALC',
-    stockName: 'Palmci Côte d\'Ivoire',
-    quantity: 300,
-    unitPrice: 6800,
-    fees: 24072,
-    date: DateTime(2026, 9, 20, 10, 45),
-    notes: 'Position agro-industrie',
-  ),
-  Operation(
-    id: 'op-005',
-    type: OperationType.achat,
-    stockCode: 'ECOC',
-    stockName: 'Ecobank Côte d\'Ivoire',
-    quantity: 400,
-    unitPrice: 7100,
-    fees: 33512,
-    date: DateTime(2026, 10, 2, 13, 0),
-    notes: 'Achat pour dividende',
-  ),
-  Operation(
-    id: 'op-006',
-    type: OperationType.achat,
-    stockCode: 'TTLC',
-    stockName: 'TotalEnergies Marketing CI',
-    quantity: 500,
-    unitPrice: 2250,
-    fees: 13275,
-    date: DateTime(2026, 10, 10, 9, 30),
-    notes: 'Rendement défensif',
-  ),
-  Operation(
-    id: 'op-007',
-    type: OperationType.achat,
-    stockCode: 'SIBC',
-    stockName: 'Société Ivoirienne de Banque',
-    quantity: 200,
-    unitPrice: 5900,
-    fees: 13924,
-    date: DateTime(2026, 10, 18, 11, 0),
-    notes: 'Renforcement bancaire',
-  ),
-  Operation(
-    id: 'op-008',
-    type: OperationType.vente,
-    stockCode: 'PALC',
-    stockName: 'Palmci Côte d\'Ivoire',
-    quantity: 50,
-    unitPrice: 7400,
-    fees: 4366,
-    date: DateTime(2026, 10, 22, 14, 10),
-    notes: 'Prise de bénéfice partielle',
-  ),
-];
+/// Aucune donnée fictive : la liste démarre vide et stocke uniquement les opérations réelles de l'utilisateur
+const List<Operation> kInitialOperations = [];
 
-/// Notifier pour la liste des opérations
+/// Notifier pour la liste des opérations réelles avec persistance locale
 class OperationsNotifier extends Notifier<List<Operation>> {
+  static const _storageKey = 'user_real_operations_v1';
+
   @override
   List<Operation> build() {
+    _loadFromStorage();
     return kInitialOperations;
+  }
+
+  Future<void> _loadFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey);
+      if (raw != null && raw.isNotEmpty) {
+        final List<dynamic> list = jsonDecode(raw) as List<dynamic>;
+        state = list
+            .map((item) => Operation.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('[OperationsNotifier] Erreur de chargement local : $e');
+    }
+  }
+
+  Future<void> _saveToStorage(List<Operation> ops) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encoded = jsonEncode(ops.map((op) => op.toJson()).toList());
+      await prefs.setString(_storageKey, encoded);
+    } catch (e) {
+      debugPrint('[OperationsNotifier] Erreur d\'enregistrement local : $e');
+    }
   }
 
   void addOperation(Operation operation) {
     state = [operation, ...state];
+    _saveToStorage(state);
   }
 
   void updateOperation(Operation updated) {
@@ -117,10 +63,12 @@ class OperationsNotifier extends Notifier<List<Operation>> {
       for (final op in state)
         if (op.id == updated.id) updated else op,
     ];
+    _saveToStorage(state);
   }
 
   void deleteOperation(String id) {
     state = state.where((op) => op.id != id).toList();
+    _saveToStorage(state);
   }
 }
 
@@ -175,14 +123,35 @@ final operationByIdProvider = Provider.family<Operation?, String>((ref, id) {
 
 /// Notifier pour le solde espèces réel déclaré sur le relevé SGI par l'utilisateur
 class SgiDeclaredBalanceNotifier extends Notifier<int> {
+  static const _storageKey = 'user_sgi_balance_v1';
+
   @override
   int build() {
-    // Solde SGI initial réaliste (ex: 1 850 000 FCFA)
-    return 1850000;
+    _loadFromStorage();
+    // Valeur initiale 0 (sans montant fictif)
+    return 0;
   }
 
-  void updateBalance(int newBalance) {
+  Future<void> _loadFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt(_storageKey);
+      if (saved != null) {
+        state = saved;
+      }
+    } catch (e) {
+      debugPrint('[SgiDeclaredBalanceNotifier] Erreur chargement : $e');
+    }
+  }
+
+  Future<void> updateBalance(int newBalance) async {
     state = newBalance;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_storageKey, newBalance);
+    } catch (e) {
+      debugPrint('[SgiDeclaredBalanceNotifier] Erreur sauvegarde : $e');
+    }
   }
 }
 
@@ -211,7 +180,7 @@ final reconciliationProvider = Provider<ReconciliationData>((ref) {
   final operations = ref.watch(operationsProvider);
   final sgiDeclared = ref.watch(sgiDeclaredBalanceProvider);
 
-  // Calcul du solde de trésorerie net d'après toutes les opérations enregistrées
+  // Calcul du solde de trésorerie net d'après toutes les opérations réelles enregistrées
   int calculatedBalance = 0;
   for (final op in operations) {
     calculatedBalance += op.cashImpact;
