@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/responsive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
@@ -94,7 +95,8 @@ class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F4EE),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: ResponsiveCenter(
+          child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,6 +416,7 @@ class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

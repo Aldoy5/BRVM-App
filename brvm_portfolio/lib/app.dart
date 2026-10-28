@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'core/responsive.dart';
 import 'core/constants.dart';
 import 'core/theme.dart';
 import 'features/history/history_screen.dart';
@@ -145,6 +146,57 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = Responsive.isDesktop(context);
+
+    if (isDesktop) {
+      // Layout desktop : NavigationRail à gauche + contenu centré
+      return Scaffold(
+        body: Row(
+          children: [
+            // Rail de navigation latéral
+            NavigationRail(
+              selectedIndex: navigationShell.currentIndex,
+              onDestinationSelected: _onDestinationSelected,
+              backgroundColor: Colors.white,
+              extended: MediaQuery.sizeOf(context).width >= 1100,
+              minWidth: 72,
+              leading: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: FloatingActionButton(
+                  onPressed: () => context.push('/operation/add'),
+                  elevation: 2,
+                  child: const Icon(Icons.add, size: 28),
+                ),
+              ),
+              destinations: const [
+                NavigationRailDestination(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  selectedIcon: Icon(Icons.account_balance_wallet),
+                  label: Text('Portefeuille'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.show_chart_outlined),
+                  selectedIcon: Icon(Icons.show_chart),
+                  label: Text('Marché'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.history_outlined),
+                  selectedIcon: Icon(Icons.history),
+                  label: Text('Historique'),
+                ),
+              ],
+            ),
+            const VerticalDivider(width: 1, thickness: 0.8, color: AppColors.border),
+            // Contenu principal centré
+            Expanded(
+              child: navigationShell,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Layout mobile : Bottom navigation bar
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(

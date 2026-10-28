@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/responsive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
@@ -30,40 +31,42 @@ class PortfolioScreen extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.read(marketStocksProvider.notifier).refreshLiveQuotes(),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Synthèse du portefeuille : en-tête épuré, pills de gains, solde disponible
-                PortfolioSummaryCard(summary: summary),
-                const SizedBox(height: 16),
+          child: ResponsiveCenter(
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Synthèse du portefeuille : en-tête épuré, pills de gains, solde disponible
+                  PortfolioSummaryCard(summary: summary),
+                  const SizedBox(height: 16),
 
-                // Carte contenant la liste des positions
-                if (positions.isEmpty)
-                  _buildEmptyState(context)
-                else
-                  Card(
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: const BorderSide(color: AppColors.border, width: 0.8),
+                  // Carte contenant la liste des positions
+                  if (positions.isEmpty)
+                    _buildEmptyState(context)
+                  else
+                    Card(
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: AppColors.border, width: 0.8),
+                      ),
+                      color: Colors.white,
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: [
+                          for (int i = 0; i < positions.length; i++)
+                            PositionListTile(
+                              position: positions[i],
+                              showDivider: i < positions.length - 1,
+                              onTap: () => context.push('/stock/${positions[i].stockCode}'),
+                            ),
+                        ],
+                      ),
                     ),
-                    color: Colors.white,
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      children: [
-                        for (int i = 0; i < positions.length; i++)
-                          PositionListTile(
-                            position: positions[i],
-                            showDivider: i < positions.length - 1,
-                            onTap: () => context.push('/stock/${positions[i].stockCode}'),
-                          ),
-                      ],
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

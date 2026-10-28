@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/responsive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
@@ -43,7 +44,8 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.read(marketStocksProvider.notifier).refreshLiveQuotes(),
-          child: SingleChildScrollView(
+          child: ResponsiveCenter(
+            child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
             child: Column(
@@ -245,6 +247,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                 ),
                 const SizedBox(height: 24),
               ],
+            ),
             ),
           ),
         ),

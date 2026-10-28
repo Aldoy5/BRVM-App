@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/responsive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
@@ -17,7 +18,8 @@ class HistoryScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: ResponsiveCenter(
+          child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -100,6 +102,7 @@ class HistoryScreen extends ConsumerWidget {
               // Marge basse pour le défilement au-dessus de la barre de navigation
               const SizedBox(height: 80),
             ],
+          ),
           ),
         ),
       ),
