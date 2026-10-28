@@ -1,6 +1,8 @@
-const admin = require('firebase-admin');
+const { initializeApp, cert, getApps } = require('firebase-admin/app');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { collecterCoursBRVM } = require('./scraper_brvm');
 const fs = require('fs');
+const path = require('path');
 
 let db = null;
 
@@ -11,30 +13,38 @@ try {
     if (rawSecret.startsWith('{')) {
       serviceAccount = JSON.parse(rawSecret);
     } else {
-      try {
-        const decoded = Buffer.from(rawSecret, 'base64').toString('utf8');
-        serviceAccount = JSON.parse(decoded);
-      } catch (e) {
-        if (fs.existsSync(rawSecret)) {
-          serviceAccount = JSON.parse(fs.readFileSync(rawSecret, 'utf8'));
-        } else {
-          throw new Error('Impossible de parser FIREBASE_SERVICE_ACCOUNT (ni JSON brut, ni base64, ni fichier valide)');
+      const resolvedPath = path.isAbsolute(rawSecret) ? rawSecret : path.join(__dirname, rawSecret);
+      if (fs.existsSync(resolvedPath)) {
+        serviceAccount = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
+      } else {
+        try {
+          const decoded = Buffer.from(rawSecret, 'base64').toString('utf8');
+          serviceAccount = JSON.parse(decoded);
+        } catch (e) {
+          throw new Error('Impossible de parser FIREBASE_SERVICE_ACCOUNT (ni JSON brut, ni fichier existant, ni base64)');
         }
       }
     }
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    db = admin.firestore();
+
+    if (!getApps().length) {
+      initializeApp({
+        credential: cert(serviceAccount)
+      });
+    }
+    db = getFirestore();
     console.log('[Sync Firestore] Firebase Admin initialisé via FIREBASE_SERVICE_ACCOUNT.');
   } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    admin.initializeApp();
-    db = admin.firestore();
+    if (!getApps().length) {
+      initializeApp();
+    }
+    db = getFirestore();
     console.log('[Sync Firestore] Firebase Admin initialisé via GOOGLE_APPLICATION_CREDENTIALS.');
   } else {
     try {
-      admin.initializeApp();
-      db = admin.firestore();
+      if (!getApps().length) {
+        initializeApp();
+      }
+      db = getFirestore();
       console.log('[Sync Firestore] Firebase Admin initialisé via identifiants par défaut.');
     } catch (e) {
       console.warn('[Sync Firestore] Aucun secret FIREBASE_SERVICE_ACCOUNT détecté. La synchronisation Firestore sera ignorée (seul brvm_cours.json sera produit).');
@@ -69,7 +79,7 @@ async function synchroniserFirestore(donnees) {
   }
 
   batch.set(systemeRef, {
-    derniere_mise_a_jour: admin.firestore.FieldValue.serverTimestamp(),
+    derniere_mise_a_jour: FieldValue.serverTimestamp(),
     date_collecte_iso: donnees.date_collecte,
     date_maj_source: donnees.date_maj_source,
     statut_seance: donnees.statut_seance,
@@ -93,7 +103,7 @@ async function synchroniserFirestore(donnees) {
       cours_veille: titre.cours_veille,
       variation_pct: titre.variation_pct,
       volume: titre.volume,
-      cree_le: admin.firestore.FieldValue.serverTimestamp(),
+      cree_le: FieldValue.serverTimestamp(),
     }, { merge: true });
   }
   await historyBatch.commit();
