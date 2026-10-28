@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "810687997036",
+    "project_id": "brvm-app-c63f8",
+    "storage_bucket": "brvm-app-c63f8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:810687997036:android:1a724260b62eeb0080a449",
+        "android_client_info": {
+          "package_name": "com.brvm.brvm_portfolio"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChV7BZUZe_esP3TgY6O-Nm67Cn78gNKdE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

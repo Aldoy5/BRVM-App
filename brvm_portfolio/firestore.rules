@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Cotations du marché BRVM – lecture publique
+    match /systeme/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Données utilisateur (portefeuille, opérations) – accès authentifié uniquement
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Bloquer tout le reste par défaut
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

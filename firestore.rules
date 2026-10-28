@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Cotations publiques système : lecture pour tout utilisateur authentifié, écriture réservée au backend
+    match /systeme/cotations_courantes {
+      allow read: if request.auth != null;
+      allow write: if false; // Uniquement via Cloud Functions (Admin SDK)
+    }
+
+    // Référentiel des titres et historique de cotations
+    match /titres/{code} {
+      allow read: if request.auth != null;
+      allow write: if false;
+
+      match /cours/{date} {
+        allow read: if request.auth != null;
+        allow write: if false;
+      }
+    }
+
+    // Données strictement privées de l'utilisateur (portefeuille, opérations, ajustements)
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /operations/{operationId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /reconciliations/{reconciliationId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /imports/{importId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}
