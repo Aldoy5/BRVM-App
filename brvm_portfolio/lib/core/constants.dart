@@ -36,5 +36,7 @@ class AppConstants {
   AppConstants._();
   static const String appName = 'BRVM Portfolio';
   static const double defaultFeeRatePercent = 1.18;
+  /// Taux de frais par défaut en points de base (1.18% = 118 pb).
+  static const int defaultFeeRateBp = 118;
   static const String sgiBalancePrefKey = 'user_sgi_balance';
 }

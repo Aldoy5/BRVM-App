@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../core/responsive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -39,6 +40,8 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 
     final stocks = ref.watch(filteredMarketStocksProvider);
     final selectedFilter = ref.watch(marketFilterProvider);
+    final isRefreshing = ref.watch(isMarketRefreshingProvider);
+    final lastUpdated = ref.watch(lastMarketUpdateTimeProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -46,208 +49,298 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
           onRefresh: () => ref.read(marketStocksProvider.notifier).refreshLiveQuotes(),
           child: ResponsiveCenter(
             child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Titre principal 'Marché' en grand et gras en haut à gauche
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Marché',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Petit label 'Rechercher un titre'
-                const Text(
-                  'Rechercher un titre',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Champ de recherche avec placeholder 'Code ou nom'
-                TextField(
-                  controller: _searchController,
-                  onChanged: (val) {
-                    ref.read(marketSearchQueryProvider.notifier).updateQuery(val);
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Code ou nom',
-                    hintStyle: const TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textTertiary,
-                    ),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18, color: AppColors.textSecondary),
-                            onPressed: () {
-                              _searchController.clear();
-                              ref.read(marketSearchQueryProvider.notifier).clear();
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border, width: 1),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.border, width: 1),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // 3 onglets de filtres dans un conteneur arrondi : 'Tous', 'Hausses', 'Baisses'
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.all(4),
-                  child: Row(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // En-tête avec titre 'Marché', heure de mise à jour et bouton Actualiser
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: _buildFilterTab(
-                          label: 'Tous',
-                          filter: StockFilter.all,
-                          isSelected: selectedFilter == StockFilter.all,
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildFilterTab(
-                          label: 'Hausses',
-                          filter: StockFilter.gainers,
-                          isSelected: selectedFilter == StockFilter.gainers,
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildFilterTab(
-                          label: 'Baisses',
-                          filter: StockFilter.losers,
-                          isSelected: selectedFilter == StockFilter.losers,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Liste des titres dans un conteneur style carte avec bordure subtile
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE5E5E5), width: 1),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: stocks.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.search_off_rounded,
-                                  size: 48,
-                                  color: AppColors.textTertiary,
-                                ),
-                                SizedBox(height: 12),
-                                Text(
-                                  'Aucun titre correspondant',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Vérifiez l\'orthographe ou changez de filtre.',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Marché',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                        )
-                      : Column(
-                          children: [
-                            for (int i = 0; i < stocks.length; i++)
-                              StockListTile(
-                                stock: stocks[i],
-                                onTap: () => context.push('/stock/${stocks[i].code}'),
-                                showDivider: true,
-                              ),
-                            // Au bas de la liste, points de suspension (...) et icône menu ⋯
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    '...',
-                                    style: TextStyle(
-                                      color: AppColors.textTertiary,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 2,
-                                    ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isRefreshing
+                                ? 'Actualisation en direct...'
+                                : 'Mis à jour à ${DateFormat('HH:mm').format(lastUpdated)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Tooltip(
+                        message: 'Rafraîchir les cotations',
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: isRefreshing
+                                ? null
+                                : () async {
+                                    await ref
+                                        .read(marketStocksProvider.notifier)
+                                        .refreshLiveQuotes();
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Données du marché actualisées'),
+                                          duration: Duration(seconds: 2),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.border, width: 1),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.03),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
                                   ),
-                                  Icon(
-                                    Icons.more_horiz,
-                                    color: AppColors.textTertiary,
-                                    size: 20,
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isRefreshing)
+                                    const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.primary,
+                                      ),
+                                    )
+                                  else
+                                    const Icon(
+                                      Icons.refresh_rounded,
+                                      size: 16,
+                                      color: AppColors.primary,
+                                    ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    isRefreshing ? 'Actualisation...' : 'Actualiser',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isRefreshing
+                                          ? AppColors.textSecondary
+                                          : AppColors.primary,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                ),
-                const SizedBox(height: 16),
-
-                // Texte de pied de page
-                const Text(
-                  'Cours indicatifs, sans garantie. Mis à jour après la clôture.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textTertiary,
-                    height: 1.4,
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
+                  const SizedBox(height: 20),
+
+                  // Petit label 'Rechercher un titre'
+                  const Text(
+                    'Rechercher un titre',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Champ de recherche avec placeholder 'Code ou nom'
+                  TextField(
+                    controller: _searchController,
+                    onChanged: (val) {
+                      ref.read(marketSearchQueryProvider.notifier).updateQuery(val);
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Code ou nom',
+                      hintStyle: const TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textTertiary,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18, color: AppColors.textSecondary),
+                              onPressed: () {
+                                _searchController.clear();
+                                ref.read(marketSearchQueryProvider.notifier).clear();
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border, width: 1),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border, width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 3 onglets de filtres dans un conteneur arrondi : 'Tous', 'Hausses', 'Baisses'
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildFilterTab(
+                            label: 'Tous',
+                            filter: StockFilter.all,
+                            isSelected: selectedFilter == StockFilter.all,
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildFilterTab(
+                            label: 'Hausses',
+                            filter: StockFilter.gainers,
+                            isSelected: selectedFilter == StockFilter.gainers,
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildFilterTab(
+                            label: 'Baisses',
+                            filter: StockFilter.losers,
+                            isSelected: selectedFilter == StockFilter.losers,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Liste des titres dans un conteneur style carte avec bordure subtile
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE5E5E5), width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: stocks.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.search_off_rounded,
+                                    size: 48,
+                                    color: AppColors.textTertiary,
+                                  ),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Aucun titre correspondant',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Vérifiez l\'orthographe ou changez de filtre.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: [
+                              for (int i = 0; i < stocks.length; i++)
+                                StockListTile(
+                                  stock: stocks[i],
+                                  onTap: () => context.push('/stock/${stocks[i].code}'),
+                                  showDivider: true,
+                                ),
+                              // Au bas de la liste, points de suspension (...) et icône menu ⋯
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '...',
+                                      style: TextStyle(
+                                        color: AppColors.textTertiary,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2,
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.more_horiz,
+                                      color: AppColors.textTertiary,
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Texte de pied de page
+                  const Text(
+                    'Cours indicatifs, sans garantie. Mis à jour après la clôture.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textTertiary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
           ),
         ),
