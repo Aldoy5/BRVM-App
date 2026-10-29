@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'core/responsive.dart';
 import 'core/constants.dart';
 import 'core/theme.dart';
+import 'features/auth/auth_providers.dart';
+import 'features/auth/login_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/market/market_screen.dart';
 import 'features/market/market_sync_service.dart';
@@ -15,12 +18,53 @@ import 'features/stock_detail/stock_detail_screen.dart';
 // Clé de navigation globale
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Configuration principale des routes avec GoRouter
+/// Adaptateur de flux pour rafraîchir GoRouter lors des changements d'authentification
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<dynamic> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
+
+/// Configuration principale des routes avec GoRouter et garde d'authentification
 final routerProvider = Provider<GoRouter>((ref) {
+  final authRepo = ref.watch(authRepositoryProvider);
+  final refreshListenable = GoRouterRefreshStream(authRepo.authStateChanges);
+  ref.onDispose(() => refreshListenable.dispose());
+
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/portfolio',
+    refreshListenable: refreshListenable,
+    redirect: (context, state) {
+      final user = authRepo.currentUser;
+      final isLoggedIn = user != null;
+      final isLoggingIn = state.matchedLocation == '/login';
+
+      if (!isLoggedIn && !isLoggingIn) {
+        return '/login';
+      }
+      if (isLoggedIn && isLoggingIn) {
+        return '/portfolio';
+      }
+      return null;
+    },
     routes: [
+      // Écran de connexion
+      GoRoute(
+        path: '/login',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const LoginScreen(),
+      ),
+
       // Shell contenant les 3 onglets principaux et la barre de navigation
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -105,7 +149,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 });
 
 /// Scaffold englobant avec BottomAppBar minimaliste et FAB central "+"
-class AppScaffold extends StatelessWidget {
+class AppScaffold extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   const AppScaffold({
@@ -117,6 +161,33 @@ class AppScaffold extends StatelessWidget {
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
+    );
+  }
+
+  void _confirmSignOut(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Déconnexion'),
+        content: const Text('Voulez-vous vous déconnecter de votre compte ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.loss,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await ref.read(authRepositoryProvider).signOut();
+            },
+            child: const Text('Se déconnecter'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -145,8 +216,9 @@ class AppScaffold extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDesktop = Responsive.isDesktop(context);
+    final user = ref.watch(currentUserProvider);
 
     if (isDesktop) {
       // Layout desktop : NavigationRail à gauche + contenu centré
@@ -185,6 +257,19 @@ class AppScaffold extends StatelessWidget {
                   label: Text('Historique'),
                 ),
               ],
+              trailing: Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: IconButton(
+                      icon: const Icon(Icons.logout_rounded, color: AppColors.textSecondary),
+                      tooltip: 'Se déconnecter (${user?.email ?? ""})',
+                      onPressed: () => _confirmSignOut(context, ref),
+                    ),
+                  ),
+                ),
+              ),
             ),
             const VerticalDivider(width: 1, thickness: 0.8, color: AppColors.border),
             // Contenu principal centré

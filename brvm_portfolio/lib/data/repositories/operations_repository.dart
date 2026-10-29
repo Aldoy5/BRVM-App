@@ -2,9 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../core/models/operation.dart';
 
-/// Repository pour la persistance des opérations du portefeuille dans Firestore
+/// Repository pour la persistance des opérations et données utilisateur dans Firestore
 /// Chaque utilisateur dispose de son sous-ensemble isolé : `users/{uid}/operations`
-/// La persistance hors-ligne Firestore assure la disponibilité totale sans connexion (§11).
+/// La persistance hors-ligne Firestore assure la disponibilité totale sans connexion.
 class OperationsRepository {
   final FirebaseFirestore? _customFirestore;
   final String? _userId;
@@ -22,13 +22,17 @@ class OperationsRepository {
     }
   }
 
-  CollectionReference<Map<String, dynamic>>? get _userOpsRef {
+  DocumentReference<Map<String, dynamic>>? get _userDocRef {
     final db = _firestore;
     if (db == null || _userId == null) return null;
-    return db.collection('users').doc(_userId).collection('operations');
+    return db.collection('users').doc(_userId);
   }
 
-  /// Écoute le flux d'opérations de l'utilisateur en temps réel avec cache hors-ligne
+  CollectionReference<Map<String, dynamic>>? get _userOpsRef {
+    return _userDocRef?.collection('operations');
+  }
+
+  /// Écoute le flux d'opérations de l'utilisateur en temps réel
   Stream<List<Operation>> watchOperations() {
     final ref = _userOpsRef;
     if (ref == null) {
@@ -46,7 +50,7 @@ class OperationsRepository {
     });
   }
 
-  /// Enregistre une nouvelle opération
+  /// Enregistre ou met à jour une opération
   Future<void> saveOperation(Operation operation) async {
     final ref = _userOpsRef;
     if (ref == null) return;
@@ -61,7 +65,7 @@ class OperationsRepository {
       'fees': operation.fees,
       'cashAmount': operation.cashAmount,
       'notes': operation.notes,
-      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
@@ -70,6 +74,36 @@ class OperationsRepository {
     final ref = _userOpsRef;
     if (ref == null) return;
     await ref.doc(operationId).delete();
+  }
+
+  /// Récupère le solde SGI déclaré de l'utilisateur depuis Firestore
+  Future<int?> getSgiDeclaredBalance() async {
+    final docRef = _userDocRef;
+    if (docRef == null) return null;
+    try {
+      final snap = await docRef.get();
+      if (snap.exists && snap.data() != null) {
+        final val = snap.data()!['sgiDeclaredBalance'];
+        if (val is num) return val.toInt();
+      }
+    } catch (e) {
+      debugPrint('[OperationsRepository] Erreur lecture solde SGI : $e');
+    }
+    return null;
+  }
+
+  /// Enregistre le solde SGI déclaré de l'utilisateur dans Firestore
+  Future<void> saveSgiDeclaredBalance(int balance) async {
+    final docRef = _userDocRef;
+    if (docRef == null) return;
+    try {
+      await docRef.set({
+        'sgiDeclaredBalance': balance,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('[OperationsRepository] Erreur sauvegarde solde SGI : $e');
+    }
   }
 
   Operation _mapDocToOperation(String id, Map<String, dynamic> data) {

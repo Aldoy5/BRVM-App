@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:brvm_portfolio/app.dart';
 
 void main() {
-  testWidgets('Test de chargement de l\'application BRVM Portfolio', (WidgetTester tester) async {
+  testWidgets('Test de chargement de l\'application BRVM Portfolio (affiche la page de connexion)', (WidgetTester tester) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: BrvmPortfolioApp(),
@@ -11,7 +11,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Vérifie que l'écran Portefeuille s'affiche correctement avec sa valorisation totale
-    expect(find.text('Valorisation totale'), findsOneWidget);
+    // Vérifie que l'écran de connexion s'affiche pour un utilisateur non connecté
+    expect(find.text('Connectez-vous pour accéder à vos titres'), findsOneWidget);
+    expect(find.text('Se connecter'), findsOneWidget);
   });
 }

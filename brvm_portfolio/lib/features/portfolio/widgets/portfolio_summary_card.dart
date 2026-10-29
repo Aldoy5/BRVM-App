@@ -6,6 +6,7 @@ import '../../../core/constants.dart';
 import '../../../core/extensions.dart';
 import '../../../core/formatters.dart';
 import '../../../core/models/portfolio_summary.dart';
+import '../../auth/auth_providers.dart';
 import '../../history/history_providers.dart';
 
 /// En-tête et synthèse financière du portefeuille selon le mockup épuré
@@ -16,6 +17,33 @@ class PortfolioSummaryCard extends ConsumerWidget {
     super.key,
     required this.summary,
   });
+
+  void _confirmSignOut(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Déconnexion'),
+        content: const Text('Voulez-vous vous déconnecter de votre compte ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.loss,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await ref.read(authRepositoryProvider).signOut();
+            },
+            child: const Text('Se déconnecter'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showReconcileDialog(BuildContext context, WidgetRef ref) {
     final currentBalance = ref.read(sgiDeclaredBalanceProvider);
@@ -74,18 +102,67 @@ class PortfolioSummaryCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dateStr = DateFormat('dd/MM/yyyy').format(summary.marketDate);
+    final user = ref.watch(currentUserProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Texte du haut : 'Portefeuille · cours du 28/10/2026'
-        Text(
-          'Portefeuille · cours du $dateStr',
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textSecondary,
-          ),
+        // Ligne du haut : Date du cours + Badge utilisateur connecté avec déconnexion
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              'Portefeuille · cours du $dateStr',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            if (user != null)
+              InkWell(
+                onTap: () => _confirmSignOut(context, ref),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border, width: 0.8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.account_circle,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 130),
+                        child: Text(
+                          user.email ?? '',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.logout,
+                        size: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
 
