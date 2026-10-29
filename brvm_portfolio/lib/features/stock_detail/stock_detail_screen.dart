@@ -114,6 +114,14 @@ class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
         ? const Color(0xFF1F7A4D)
         : (stock.dailyVariation < 0 ? AppColors.loss : const Color(0xFF757575));
 
+    final openPrice = stock.openingPrice > 0 ? stock.openingPrice : stock.previousClosePrice;
+    final lowPrice = stock.dayLow > 0
+        ? stock.dayLow
+        : [stock.currentPrice, openPrice, stock.previousClosePrice > 0 ? stock.previousClosePrice : stock.currentPrice].reduce((a, b) => a < b ? a : b);
+    final highPrice = stock.dayHigh > 0
+        ? stock.dayHigh
+        : [stock.currentPrice, openPrice, stock.previousClosePrice > 0 ? stock.previousClosePrice : stock.currentPrice].reduce((a, b) => a > b ? a : b);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F4EE),
       body: SafeArea(
@@ -189,6 +197,106 @@ class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              // Carte des données de séance : Veille, Ouverture, Clôture, Plus bas
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE5E2D9), width: 1),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Données de la séance',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF6B7280),
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    // Ligne 1 : Cours de la veille & Cours d'ouverture
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSessionMetric(
+                            label: 'Cours de la veille',
+                            value: formatFCFA(stock.previousClosePrice),
+                            icon: Icons.history,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSessionMetric(
+                            label: "Cours d'ouverture",
+                            value: formatFCFA(openPrice),
+                            icon: Icons.play_arrow_outlined,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    const Divider(height: 1, color: Color(0xFFF3F1EC)),
+                    const SizedBox(height: 14),
+                    // Ligne 2 : Cours de clôture & Plus bas du jour
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSessionMetric(
+                            label: 'Cours de clôture',
+                            value: formatFCFA(stock.currentPrice),
+                            valueColor: variationColor,
+                            icon: Icons.flag_outlined,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSessionMetric(
+                            label: 'Plus bas du jour',
+                            value: formatFCFA(lowPrice),
+                            icon: Icons.arrow_downward,
+                            iconColor: AppColors.loss,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (highPrice > 0 || stock.volume > 0) ...[
+                      const SizedBox(height: 14),
+                      const Divider(height: 1, color: Color(0xFFF3F1EC)),
+                      const SizedBox(height: 14),
+                      // Ligne 3 : Plus haut du jour & Volume échangé
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSessionMetric(
+                              label: 'Plus haut du jour',
+                              value: formatFCFA(highPrice),
+                              icon: Icons.arrow_upward,
+                              iconColor: const Color(0xFF1F7A4D),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildSessionMetric(
+                              label: 'Volume échangé',
+                              value: stock.volume > 0
+                                  ? '${AppFormatters.formatInteger(stock.volume)} titres'
+                                  : '—',
+                              icon: Icons.bar_chart,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // Section Graphique dans une carte blanche aux bords arrondis
               Container(
@@ -439,6 +547,46 @@ class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
         ),
       ),
       ),
+    );
+  }
+
+  Widget _buildSessionMetric({
+    required String label,
+    required String value,
+    IconData? icon,
+    Color? iconColor,
+    Color? valueColor,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 13, color: iconColor ?? const Color(0xFF9CA3AF)),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: valueColor ?? const Color(0xFF1C1B1F),
+          ),
+        ),
+      ],
     );
   }
 }
