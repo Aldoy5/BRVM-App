@@ -762,7 +762,10 @@ class MarketStocksNotifier extends Notifier<List<Stock>> {
     });
 
     // Mark as mounted after build completes synchronously
-    Future.microtask(() => _mounted = true);
+    Future.microtask(() {
+      _mounted = true;
+      refreshLiveQuotes();
+    });
 
     return kInitialBRVMStocks;
   }
@@ -790,7 +793,7 @@ class MarketStocksNotifier extends Notifier<List<Stock>> {
     ref.read(isMarketRefreshingProvider.notifier).setRefreshing(true);
     try {
       final repo = ref.read(marketRepositoryProvider);
-      final remoteQuotes = await repo.fetchLatestQuotes();
+      final remoteQuotes = await repo.refreshQuotesFromSource();
 
       if (remoteQuotes.isNotEmpty) {
         state = remoteQuotes;

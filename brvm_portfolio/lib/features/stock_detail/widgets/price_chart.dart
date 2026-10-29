@@ -30,16 +30,17 @@ class PriceChart extends StatelessWidget {
     }
 
     final chartColor = isGaining ? AppColors.gain : AppColors.loss;
-    final minY = prices.reduce(min) * 0.98;
-    final maxY = prices.reduce(max) * 1.02;
+    final rawMin = prices.reduce(min);
+    final rawMax = prices.reduce(max);
+    final minY = rawMin == rawMax ? rawMin * 0.95 : rawMin * 0.98;
+    final maxY = rawMin == rawMax ? rawMax * 1.05 : rawMax * 1.02;
+    final span = maxY - minY;
+    final interval = span > 0 ? span / 3 : 10.0;
 
     final spots = List.generate(
       prices.length,
       (index) => FlSpot(index.toDouble(), prices[index]),
     );
-
-    // Jours indicatifs pour l'axe X (7 séances de bourse)
-    final days = ['J-6', 'J-5', 'J-4', 'J-3', 'J-2', 'Veille', 'Auj.'];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -51,8 +52,8 @@ class PriceChart extends StatelessWidget {
               gridData: FlGridData(
                 show: true,
                 drawVerticalLine: false,
-                horizontalInterval: (maxY - minY) > 0 ? (maxY - minY) / 3 : 1,
-                getDrawingHorizontalLine: (value) => FlLine(
+                horizontalInterval: interval,
+                getDrawingHorizontalLine: (value) => const FlLine(
                   color: AppColors.divider,
                   strokeWidth: 1,
                   dashArray: [4, 4],
@@ -76,38 +77,42 @@ class PriceChart extends StatelessWidget {
                     interval: 1,
                     getTitlesWidget: (value, meta) {
                       final index = value.toInt();
-                      if (index >= 0 && index < days.length) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            days[index],
-                            style: const TextStyle(
-                              color: AppColors.textTertiary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        );
+                      if (index < 0 || index >= prices.length) {
+                        return const SizedBox.shrink();
                       }
-                      return const SizedBox.shrink();
+                      final label = _getLabelForIndex(index, prices.length);
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          label,
+                          style: const TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      );
                     },
                   ),
                 ),
               ),
               borderData: FlBorderData(show: false),
               minX: 0,
-              maxX: (prices.length - 1).toDouble(),
+              maxX: max(1, (prices.length - 1).toDouble()),
               minY: minY,
               maxY: maxY,
               lineTouchData: LineTouchData(
-                enabled: true,
                 touchTooltipData: LineTouchTooltipData(
+                  getTooltipColor: (_) => AppColors.surface,
                   getTooltipItems: (touchedSpots) {
                     return touchedSpots.map((spot) {
+                      final price = spot.y.round();
+                      final idx = spot.x.toInt();
+                      final label = _getLabelForIndex(idx, prices.length);
                       return LineTooltipItem(
-                        formatFCFA(spot.y.round()),
-                        const TextStyle(
-                          color: Colors.white,
+                        '$label : ${formatFCFA(price)}',
+                        TextStyle(
+                          color: chartColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -119,35 +124,30 @@ class PriceChart extends StatelessWidget {
               lineBarsData: [
                 LineChartBarData(
                   spots: spots,
-                  isCurved: true,
-                  curveSmoothness: 0.3,
+                  isCurved: prices.length > 2,
+                  curveSmoothness: 0.35,
                   color: chartColor,
                   barWidth: 2.5,
                   isStrokeCapRound: true,
                   dotData: FlDotData(
-                    show: true,
-                    checkToShowDot: (spot, barData) {
-                      // Afficher un point uniquement sur la dernière valeur (aujourd'hui)
-                      return spot.x == (prices.length - 1);
-                    },
-                    getDotPainter: (spot, percent, barData, index) {
-                      return FlDotCirclePainter(
-                        radius: 4,
-                        color: chartColor,
-                        strokeWidth: 2,
-                        strokeColor: Colors.white,
-                      );
-                    },
+                    show: prices.length <= 10,
+                    getDotPainter: (spot, percent, barData, index) =>
+                        FlDotCirclePainter(
+                      radius: 3.5,
+                      color: Colors.white,
+                      strokeWidth: 2,
+                      strokeColor: chartColor,
+                    ),
                   ),
                   belowBarData: BarAreaData(
                     show: true,
                     gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
                       colors: [
-                        chartColor.withValues(alpha: 0.20),
+                        chartColor.withValues(alpha: 0.25),
                         chartColor.withValues(alpha: 0.0),
                       ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                     ),
                   ),
                 ),
@@ -157,5 +157,21 @@ class PriceChart extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  static String _getLabelForIndex(int index, int total) {
+    if (total <= 1) return 'Auj.';
+    if (total == 2) {
+      return index == 0 ? 'Veille' : 'Auj.';
+    }
+    if (total == 3) {
+      if (index == 0) return 'Veille';
+      if (index == 1) return 'Ouv.';
+      return 'Auj.';
+    }
+    if (index == total - 1) return 'Auj.';
+    if (index == total - 2) return 'Veille';
+    final diff = total - 1 - index;
+    return 'J-$diff';
   }
 }

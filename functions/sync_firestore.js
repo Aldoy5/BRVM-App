@@ -60,12 +60,38 @@ async function synchroniserFirestore(donnees) {
     return;
   }
 
-  const batch = db.batch();
-
-  // 1. Mise à jour de la photo globale instantanée
+  // 1. Récupération de l'existant pour préserver et enrichir l'historique sans jamais écraser
   const systemeRef = db.doc('systeme/cotations_courantes');
+  let existingTitres = {};
+  try {
+    const existingSnap = await systemeRef.get();
+    if (existingSnap.exists && existingSnap.data() && existingSnap.data().titres) {
+      existingTitres = existingSnap.data().titres;
+    }
+  } catch (err) {
+    console.warn('[Sync Firestore] Lecture de l\'existant impossible :', err.message);
+  }
+
+  const dateStr = new Date(donnees.date_collecte).toISOString().split('T')[0];
   const titresMap = {};
+
   for (const titre of donnees.titres) {
+    const prev = existingTitres[titre.code] || {};
+    let historique = Array.isArray(prev.historique) ? [...prev.historique] : [];
+
+    // Ajouter ou actualiser la séance du jour dans l'historique sans doublon
+    const idx = historique.findIndex(h => (typeof h === 'object' && h.date === dateStr));
+    if (idx >= 0) {
+      historique[idx] = { date: dateStr, cours: titre.cours_cloture };
+    } else {
+      historique.push({ date: dateStr, cours: titre.cours_cloture });
+    }
+
+    // Conserver les 60 dernières séances
+    if (historique.length > 60) {
+      historique = historique.slice(historique.length - 60);
+    }
+
     titresMap[titre.code] = {
       code: titre.code,
       nom: titre.nom,
@@ -75,8 +101,11 @@ async function synchroniserFirestore(donnees) {
       variation_pct: titre.variation_pct,
       volume: titre.volume,
       date_maj: donnees.date_collecte,
+      historique: historique,
     };
   }
+
+  const batch = db.batch();
 
   batch.set(systemeRef, {
     derniere_mise_a_jour: FieldValue.serverTimestamp(),
@@ -89,10 +118,9 @@ async function synchroniserFirestore(donnees) {
   }, { merge: true });
 
   await batch.commit();
-  console.log(`[Sync Firestore] ✅ ${donnees.titres.length} titres synchronisés dans systeme/cotations_courantes.`);
+  console.log(`[Sync Firestore] ✅ ${donnees.titres.length} titres synchronisés avec historique préservé dans systeme/cotations_courantes.`);
 
-  // 2. Historisation quotidienne pour les graphiques
-  const dateStr = new Date(donnees.date_collecte).toISOString().split('T')[0];
+  // 2. Historisation quotidienne immuable par titre
   const historyBatch = db.batch();
   for (const titre of donnees.titres) {
     const historiqueRef = db.doc(`titres/${titre.code}/cours/${dateStr}`);
@@ -101,6 +129,7 @@ async function synchroniserFirestore(donnees) {
       date: dateStr,
       cours: titre.cours_cloture,
       cours_veille: titre.cours_veille,
+      cours_ouverture: titre.cours_ouverture,
       variation_pct: titre.variation_pct,
       volume: titre.volume,
       cree_le: FieldValue.serverTimestamp(),

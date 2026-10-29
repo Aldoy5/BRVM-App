@@ -84,6 +84,28 @@ class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
       );
     }
 
+    final allPrices = stock.historicalPrices;
+    List<double> displayedPrices;
+    switch (_selectedPeriod) {
+      case '1M':
+        displayedPrices = allPrices.length > 20
+            ? allPrices.sublist(allPrices.length - 20)
+            : allPrices;
+        break;
+      case '6M':
+        displayedPrices = allPrices.length > 120
+            ? allPrices.sublist(allPrices.length - 120)
+            : allPrices;
+        break;
+      case '1A':
+      default:
+        displayedPrices = allPrices;
+        break;
+    }
+
+    final String legendText = displayedPrices.length <= 3
+        ? 'Séance du jour (Veille / Ouverture / Clôture réelle)'
+        : 'Historique réel : ${displayedPrices.length} séances enregistrées';
     final sign = stock.dailyVariation > 0 ? '+' : (stock.dailyVariation < 0 ? '-' : '');
     final varAmount = '$sign${stock.variationAmount.abs().toFormattedString()}';
     final varPct = '($sign${stock.dailyVariation.abs().toStringAsFixed(1).replaceAll('.', ',')} %)';
@@ -181,7 +203,7 @@ class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     PriceChart(
-                      prices: stock.historicalPrices,
+                      prices: displayedPrices,
                       isGaining: stock.isGaining,
                     ),
                     const SizedBox(height: 16),
@@ -236,8 +258,7 @@ class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
                     const SizedBox(height: 14),
 
                     // Légende en bas de carte
-                    const Text(
-                      'Historique en construction depuis la mise en service.',
+                    Text(legendText,
                       style: TextStyle(
                         fontSize: 13,
                         color: Color(0xFF6B7280),
