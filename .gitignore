@@ -29,20 +29,31 @@ coverage/
 .vscode/
 **/.vscode/
 
-# Android build artifacts
+# Android build artifacts & properties
 **/android/app/debug/
 **/android/app/profile/
 **/android/app/release/
+local.properties
+**/local.properties
 
-# Sensitive credentials & keys
+# Sensitive credentials, secrets & certificates
 *-firebase-adminsdk*.json
 **/*-firebase-adminsdk*.json
 *serviceAccountKey*.json
 **/*serviceAccountKey*.json
 service-account*.json
 **/service-account*.json
+*credential*.json
+**/*credential*.json
+*secret*.json
+**/*secret*.json
 *.key
 *.pem
+*.p12
+*.pfx
+*.keystore
+*.jks
+*.mobileprovision
 .env
 .env.*
 !.env.example
