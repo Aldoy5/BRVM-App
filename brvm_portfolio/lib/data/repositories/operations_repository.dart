@@ -63,6 +63,7 @@ class OperationsRepository {
       'quantity': operation.quantity,
       'unitPrice': operation.unitPrice,
       'fees': operation.fees,
+      'feeRate': operation.feeRate,
       'cashAmount': operation.cashAmount,
       'notes': operation.notes,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -132,6 +133,7 @@ class OperationsRepository {
       quantity: (data['quantity'] as num?)?.toInt(),
       unitPrice: (data['unitPrice'] as num?)?.toInt(),
       fees: (data['fees'] as num?)?.toInt() ?? 0,
+      feeRate: (data['feeRate'] as num?)?.toDouble(),
       cashAmount: (data['cashAmount'] as num?)?.toInt(),
       notes: data['notes'] as String?,
     );

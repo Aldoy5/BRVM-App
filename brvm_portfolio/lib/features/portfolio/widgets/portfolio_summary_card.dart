@@ -290,7 +290,7 @@ class PortfolioSummaryCard extends ConsumerWidget {
     final amtStr = '$sign${AppFormatters.formatInteger(amount.abs())}';
 
     final pctSign = percent > 0 ? '+' : (percent < 0 ? '-' : '');
-    final pctValue = NumberFormat('0.##', 'fr_FR').format(percent.abs());
+    final pctValue = NumberFormat('0.00', 'fr_FR').format(percent.abs());
     final pctStr = '$pctSign$pctValue %';
 
     return Container(

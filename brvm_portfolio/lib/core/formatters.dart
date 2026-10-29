@@ -41,6 +41,14 @@ class AppFormatters {
     return '$sign${formatter.format(variation)}%';
   }
 
+  /// Formate un pourcentage avec 2 décimales obligatoires et signe explicite (+/-).
+  /// Exemple : 2.45 -> "+2,45 %", -1.2 -> "-1,20 %", 0 -> "0,00 %"
+  static String formatPercentWithSign(double percent, {int decimals = 2}) {
+    final sign = percent > 0.00001 ? '+' : (percent < -0.00001 ? '-' : '');
+    final formatter = NumberFormat('0.${'0' * decimals}', 'fr_FR');
+    return '$sign${formatter.format(percent.abs())} %';
+  }
+
   /// Formate une variation en montant FCFA avec signe explicite (+ ou -).
   /// Exemple : 25000 -> "+25 000 FCFA", -5000 -> "-5 000 FCFA", 0 -> "0 FCFA"
   static String formatVariationAmount(int amount) {

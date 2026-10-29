@@ -36,6 +36,7 @@ class Operation {
   final int? quantity;
   final int? unitPrice;
   final int fees; // Frais d'intermédiation / SGI
+  final double? feeRate; // Taux SGI (%) utilisé lors de l'enregistrement
   final int? cashAmount; // Montant brut pour dépôt / retrait
   final DateTime date;
   final String? notes;
@@ -48,6 +49,7 @@ class Operation {
     this.quantity,
     this.unitPrice,
     this.fees = 0,
+    this.feeRate,
     this.cashAmount,
     required this.date,
     this.notes,
@@ -97,6 +99,7 @@ class Operation {
     int? quantity,
     int? unitPrice,
     int? fees,
+    double? feeRate,
     int? cashAmount,
     DateTime? date,
     String? notes,
@@ -109,6 +112,7 @@ class Operation {
       quantity: quantity ?? this.quantity,
       unitPrice: unitPrice ?? this.unitPrice,
       fees: fees ?? this.fees,
+      feeRate: feeRate ?? this.feeRate,
       cashAmount: cashAmount ?? this.cashAmount,
       date: date ?? this.date,
       notes: notes ?? this.notes,
@@ -124,6 +128,7 @@ class Operation {
       'quantity': quantity,
       'unitPrice': unitPrice,
       'fees': fees,
+      'feeRate': feeRate,
       'cashAmount': cashAmount,
       'date': date.toIso8601String(),
       'notes': notes,
@@ -142,6 +147,7 @@ class Operation {
       quantity: (json['quantity'] as num?)?.toInt(),
       unitPrice: (json['unitPrice'] as num?)?.toInt(),
       fees: (json['fees'] as num?)?.toInt() ?? 0,
+      feeRate: (json['feeRate'] as num?)?.toDouble(),
       cashAmount: (json['cashAmount'] as num?)?.toInt(),
       date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
       notes: json['notes'] as String?,

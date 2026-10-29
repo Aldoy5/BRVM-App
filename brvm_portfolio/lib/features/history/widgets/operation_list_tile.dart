@@ -130,6 +130,20 @@ class OperationListTile extends StatelessWidget {
                     color: amountColor,
                   ),
                 ),
+                if (onDelete != null) ...[
+                  const SizedBox(width: 6),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 20,
+                      color: AppColors.textTertiary,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    tooltip: 'Supprimer',
+                    onPressed: onDelete,
+                  ),
+                ],
               ],
             ),
           ),

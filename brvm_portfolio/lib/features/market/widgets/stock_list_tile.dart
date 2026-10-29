@@ -34,10 +34,10 @@ class StockListTile extends StatelessWidget {
     // Formatage de la variation en pourcentage (+0,8 %, -1,95 %, 0,0 %)
     final String variationText;
     if (variation.abs() < 0.0001) {
-      variationText = '0,0 %';
+      variationText = '0,00 %';
     } else {
       final sign = variation > 0 ? '+' : '';
-      final numStr = NumberFormat('#,##0.0#', 'fr_FR').format(variation);
+      final numStr = NumberFormat('#,##0.00', 'fr_FR').format(variation);
       variationText = '$sign$numStr %';
     }
 

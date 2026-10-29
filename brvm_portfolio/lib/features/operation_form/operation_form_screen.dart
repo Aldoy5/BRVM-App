@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../core/responsive.dart';
 import 'package:flutter/material.dart';
@@ -68,6 +69,21 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
     _selectedDate = DateTime.now();
     _selectedType = _parseInitialType(widget.initialType);
     _selectedStockCode = widget.initialStockCode;
+    _loadSavedFeeRate();
+  }
+
+  Future<void> _loadSavedFeeRate() async {
+    if (widget.operationId != null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedRate = prefs.getDouble('user_preferred_fee_rate');
+      if (savedRate != null && mounted) {
+        setState(() {
+          _feeRateController.text = savedRate.toString();
+          _recalculateEstimatedFees();
+        });
+      }
+    } catch (_) {}
   }
 
   OperationType _parseInitialType(String? typeStr) {
@@ -106,6 +122,13 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
         if (op.unitPrice != null)
           _unitPriceController.text = op.unitPrice.toString();
         _feesController.text = op.fees.toString();
+        if (op.feeRate != null) {
+          _feeRateController.text = op.feeRate.toString();
+        } else if (op.grossAmount > 0 && op.fees > 0) {
+          final deduced = (op.fees / op.grossAmount) * 100.0;
+          final rounded = (deduced * 100).round() / 100;
+          _feeRateController.text = rounded.toString();
+        }
         if (op.cashAmount != null)
           _cashAmountController.text = op.cashAmount.toString();
         if (op.notes != null) _notesController.text = op.notes!;
@@ -360,6 +383,12 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
     final notes = _notesController.text.trim().isEmpty
         ? null
         : _notesController.text.trim();
+    final feeRateVal = double.tryParse(_feeRateController.text.trim().replaceAll(',', '.'));
+    if (widget.operationId == null && feeRateVal != null) {
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setDouble('user_preferred_fee_rate', feeRateVal);
+      }).catchError((_) {});
+    }
 
     if (_selectedType.isStockOperation) {
       if (_selectedStockCode == null) {
@@ -388,6 +417,7 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
         quantity: qty,
         unitPrice: price,
         fees: fees,
+        feeRate: feeRateVal,
         date: _selectedDate,
         notes: notes,
       );
@@ -412,6 +442,7 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
         type: _selectedType,
         cashAmount: cash,
         fees: fees,
+        feeRate: feeRateVal,
         date: _selectedDate,
         notes: notes,
       );
@@ -434,6 +465,41 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
     context.pop();
   }
 
+  void _confirmDeleteOperation() {
+    if (widget.operationId == null) return;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Supprimer l\'opération'),
+        content: const Text(
+          'Voulez-vous vraiment supprimer définitivement cette opération ? Cette action est irréversible.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.loss,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              await ref
+                  .read(operationsProvider.notifier)
+                  .deleteOperation(widget.operationId!);
+              if (!mounted) return;
+              context.showAppSnackBar('Opération supprimée', isSuccess: true);
+              context.pop();
+            },
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final stocks = ref.watch(marketStocksProvider);
@@ -451,7 +517,7 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // En-tête : Titre + Bouton Fermer
+                  // En-tête : Titre + Bouton Fermer (+ Supprimer si modification)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -466,22 +532,33 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
                           letterSpacing: -0.3,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () => context.pop(),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: 4,
-                            horizontal: 4,
-                          ),
-                          child: Text(
-                            'Fermer',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textSecondary,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isEditing)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: AppColors.loss),
+                              tooltip: 'Supprimer l\'opération',
+                              onPressed: _confirmDeleteOperation,
+                            ),
+                          GestureDetector(
+                            onTap: () => context.pop(),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: 4,
+                                horizontal: 4,
+                              ),
+                              child: Text(
+                                'Fermer',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -790,7 +867,16 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
                                       color: AppColors.textSecondary,
                                     ),
                                   ),
-                                  if (_isManualFees)
+                                  if (isEditing)
+                                    const Text(
+                                      'Verrouillé',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textTertiary,
+                                      ),
+                                    )
+                                  else if (_isManualFees)
                                     GestureDetector(
                                       onTap: () {
                                         setState(() {
@@ -812,7 +898,7 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
                               const SizedBox(height: 6),
                               TextFormField(
                                 controller: _feeRateController,
-                                enabled: !_isManualFees,
+                                enabled: !_isManualFees && widget.operationId == null,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(RegExp(r'^[0-9]*[.,]?[0-9]*')),
@@ -820,11 +906,11 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: _isManualFees ? AppColors.textTertiary : AppColors.textPrimary,
+                                  color: (_isManualFees || widget.operationId != null) ? AppColors.textTertiary : AppColors.textPrimary,
                                 ),
                                 decoration: InputDecoration(
                                   filled: true,
-                                  fillColor: _isManualFees ? AppColors.surfaceVariant : Colors.white,
+                                  fillColor: (_isManualFees || widget.operationId != null) ? AppColors.surfaceVariant : Colors.white,
                                   suffixText: '%',
                                   suffixStyle: const TextStyle(fontWeight: FontWeight.w600),
                                   contentPadding: const EdgeInsets.symmetric(
@@ -851,7 +937,7 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
                                   });
                                 },
                                 validator: (val) {
-                                  if (_isManualFees) return null;
+                                  if (isEditing || _isManualFees) return null;
                                   if (val == null || val.trim().isEmpty) return 'Requis';
                                   final bp = parseTauxBp(val);
                                   if (bp == null) return 'Invalide';
@@ -1207,6 +1293,25 @@ class _OperationFormScreenState extends ConsumerState<OperationFormScreen> {
                       ),
                     ),
                   ),
+                  if (isEditing) ...[
+                    const SizedBox(height: 14),
+                    TextButton.icon(
+                      onPressed: _confirmDeleteOperation,
+                      icon: const Icon(Icons.delete_outline, color: AppColors.loss),
+                      label: const Text(
+                        'Supprimer cette opération',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.loss,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.loss,
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 30),
                 ],
               ),

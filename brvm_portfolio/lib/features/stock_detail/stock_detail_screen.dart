@@ -108,7 +108,7 @@ class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
         : 'Historique réel : ${displayedPrices.length} séances enregistrées';
     final sign = stock.dailyVariation > 0 ? '+' : (stock.dailyVariation < 0 ? '-' : '');
     final varAmount = '$sign${stock.variationAmount.abs().toFormattedString()}';
-    final varPct = '($sign${stock.dailyVariation.abs().toStringAsFixed(1).replaceAll('.', ',')} %)';
+    final varPct = '($sign${stock.dailyVariation.abs().toStringAsFixed(2).replaceAll('.', ',')} %)';
     final variationText = '$varAmount $varPct aujourd’hui';
     final variationColor = stock.dailyVariation > 0
         ? const Color(0xFF1F7A4D)
@@ -467,7 +467,7 @@ class _StockDetailScreenState extends ConsumerState<StockDetailScreen> {
                         ),
                         Text(
                           position != null
-                              ? '${position.totalGainLoss >= 0 ? '+' : ''}${formatFCFA(position.totalGainLoss.round()).replaceAll(' FCFA', '')} (${position.totalGainLossPercent >= 0 ? '+' : ''}${position.totalGainLossPercent.toStringAsFixed(1).replaceAll('.', ',')} %)'
+                              ? '${position.totalGainLoss > 0 ? '+' : (position.totalGainLoss < 0 ? '-' : '')}${AppFormatters.formatInteger(position.totalGainLoss.abs())} (${AppFormatters.formatPercentWithSign(position.totalGainLossPercent)})'
                               : '—',
                           style: TextStyle(
                             fontSize: 16,

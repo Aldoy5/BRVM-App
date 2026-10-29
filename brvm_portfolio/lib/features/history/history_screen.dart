@@ -1,3 +1,5 @@
+import '../../core/extensions.dart';
+import '../../core/models/operation.dart';
 import 'package:flutter/material.dart';
 import '../../core/responsive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,40 @@ import 'widgets/reconciliation_card.dart';
 /// Écran Historique listant toutes les opérations financières et le rapprochement SGI
 class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
+
+  void _confirmDelete(BuildContext context, WidgetRef ref, Operation operation) {
+    final title = operation.type.label;
+    final code = operation.stockCode != null ? ' ${operation.stockCode}' : '';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer l\'opération'),
+        content: Text(
+          'Voulez-vous vraiment supprimer cette opération ($title$code) ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.loss,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await ref.read(operationsProvider.notifier).deleteOperation(operation.id);
+              if (context.mounted) {
+                context.showAppSnackBar('Opération supprimée', isSuccess: true);
+              }
+            },
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,11 +117,57 @@ class HistoryScreen extends ConsumerWidget {
                       : Column(
                           children: [
                             for (int i = 0; i < operations.length; i++) ...[
-                              OperationListTile(
-                                operation: operations[i],
-                                onTap: () {
-                                  context.push('/operation/${operations[i].id}/edit');
+                              Dismissible(
+                                key: Key('op-${operations[i].id}'),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  color: AppColors.loss,
+                                  child: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                confirmDismiss: (_) async {
+                                  final title = operations[i].type.label;
+                                  final code = operations[i].stockCode != null ? ' ${operations[i].stockCode}' : '';
+                                  return await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text('Supprimer l\'opération'),
+                                      content: Text(
+                                        'Voulez-vous vraiment supprimer cette opération ($title$code) ?',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.of(ctx).pop(false),
+                                          child: const Text('Annuler'),
+                                        ),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.loss,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                          onPressed: () => Navigator.of(ctx).pop(true),
+                                          child: const Text('Supprimer'),
+                                        ),
+                                      ],
+                                    ),
+                                  ) ?? false;
                                 },
+                                onDismissed: (_) {
+                                  ref.read(operationsProvider.notifier).deleteOperation(operations[i].id);
+                                  context.showAppSnackBar('Opération supprimée', isSuccess: true);
+                                },
+                                child: OperationListTile(
+                                  operation: operations[i],
+                                  onTap: () {
+                                    context.push('/operation/${operations[i].id}/edit');
+                                  },
+                                  onDelete: () => _confirmDelete(context, ref, operations[i]),
+                                ),
                               ),
                               if (i < operations.length - 1)
                                 const Divider(

@@ -33,7 +33,7 @@ class PositionListTile extends StatelessWidget {
 
     // Formatage du pourcentage (+0,8 %)
     final String pctSign = dailyVariation > 0 ? '+' : (dailyVariation < 0 ? '-' : '');
-    final String pctValue = NumberFormat('0.##', 'fr_FR').format(dailyVariation.abs());
+    final String pctValue = NumberFormat('0.00', 'fr_FR').format(dailyVariation.abs());
     final String dailyPctStr = '$pctSign$pctValue %';
 
     return Column(
