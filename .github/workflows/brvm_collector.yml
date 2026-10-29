@@ -2,20 +2,29 @@ name: Collecte et Synchronisation Cotations BRVM
 
 on:
   schedule:
-    # Du lundi au vendredi, toutes les 15 minutes entre 09h00 et 15h00 GMT (horaires séance BRVM)
+    # Du lundi au vendredi, toutes les 15 minutes entre 09h00 et 15h30 GMT (horaires séance BRVM)
     - cron: '*/15 9-15 * * 1-5'
   workflow_dispatch: # Déclenchement manuel à la demande depuis GitHub
+
+# Empêche les exécutions concurrentes du même workflow
+concurrency:
+  group: brvm-collector
+  cancel-in-progress: false
 
 jobs:
   collect_and_sync:
     name: Scraper & Synchro Firestore
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
 
     steps:
       - name: Récupérer le code source
         uses: actions/checkout@v4
+        with:
+          # Utiliser le token par défaut avec permissions d'écriture
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configurer Node.js
         uses: actions/setup-node@v4
@@ -26,7 +35,7 @@ jobs:
 
       - name: Installer les dépendances
         working-directory: functions
-        run: npm install
+        run: npm ci || npm install
 
       - name: Exécuter la collecte et mise à jour Firestore
         working-directory: functions
@@ -42,6 +51,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "Aucune modification des cotations à valider."
           else
-            git commit -m "chore(cotations): actualisation automatique des cours BRVM [skip ci]"
+            git commit -m "chore(cotations): actualisation automatique des cours BRVM"
             git push
           fi
