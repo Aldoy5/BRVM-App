@@ -1,7 +1,7 @@
 {
-  "date_collecte": "2026-10-29T14:34:41.524Z",
-  "date_maj_source": "Dernière mise à jour : Jeudi, 29 octobre, 2026 - 14:15",
-  "statut_seance": "OUVERTE",
+  "date_collecte": "2026-10-29T17:32:30.377Z",
+  "date_maj_source": "Dernière mise à jour : Jeudi, 29 octobre, 2026 - 17:15",
+  "statut_seance": "FERMEE",
   "nb_titres": 48,
   "entetes_detectees": {
     "symbole": 0,
@@ -89,7 +89,7 @@
     {
       "code": "BOAM",
       "nom": "BANK OF AFRICA MALI",
-      "volume": 1715,
+      "volume": 1751,
       "cours_veille": 5850,
       "cours_ouverture": 5700,
       "cours_cloture": 5750,
@@ -98,7 +98,7 @@
     {
       "code": "BOAN",
       "nom": "BANK OF AFRICA NIGER",
-      "volume": 8588,
+      "volume": 8598,
       "cours_veille": 5300,
       "cours_ouverture": 5100,
       "cours_cloture": 5300,
@@ -107,7 +107,7 @@
     {
       "code": "BOAS",
       "nom": "BANK OF AFRICA SENEGAL",
-      "volume": 5736,
+      "volume": 5741,
       "cours_veille": 8210,
       "cours_ouverture": 8210,
       "cours_cloture": 8300,
@@ -116,11 +116,11 @@
     {
       "code": "CABC",
       "nom": "SICABLE COTE D'IVOIRE",
-      "volume": 384,
-      "cours_veille": 2990,
+      "volume": 387,
+      "cours_veille": 2925,
       "cours_ouverture": 2985,
-      "cours_cloture": 2900,
-      "variation_pct": -3.17
+      "cours_cloture": 2925,
+      "variation_pct": -2.34
     },
     {
       "code": "CBIBF",
@@ -161,11 +161,11 @@
     {
       "code": "ETIT",
       "nom": "Ecobank Transnational Incorporated TOGO",
-      "volume": 371492,
-      "cours_veille": 62,
+      "volume": 676184,
+      "cours_veille": 64,
       "cours_ouverture": 61,
-      "cours_cloture": 63,
-      "variation_pct": 3.28
+      "cours_cloture": 64,
+      "variation_pct": 4.92
     },
     {
       "code": "FTSC",
@@ -179,11 +179,11 @@
     {
       "code": "LNBB",
       "nom": "LOTERIE NATIONALE DU BENIN",
-      "volume": 8842,
-      "cours_veille": 3850,
+      "volume": 9342,
+      "cours_veille": 3975,
       "cours_ouverture": 3975,
-      "cours_cloture": 3940,
-      "variation_pct": -0.88
+      "cours_cloture": 3975,
+      "variation_pct": 0
     },
     {
       "code": "NEIC",
@@ -197,7 +197,7 @@
     {
       "code": "NSBC",
       "nom": "NSIA BANQUE COTE D'IVOIRE",
-      "volume": 3095,
+      "volume": 3098,
       "cours_veille": 18650,
       "cours_ouverture": 18900,
       "cours_cloture": 18650,
@@ -215,20 +215,20 @@
     {
       "code": "ONTBF",
       "nom": "ONATEL BURKINA FASO",
-      "volume": 1291,
-      "cours_veille": 2995,
+      "volume": 1531,
+      "cours_veille": 3060,
       "cours_ouverture": 3060,
-      "cours_cloture": 2990,
-      "variation_pct": -2.29
+      "cours_cloture": 3060,
+      "variation_pct": 0
     },
     {
       "code": "ORAC",
       "nom": "ORANGE COTE D'IVOIRE",
-      "volume": 679,
-      "cours_veille": 21450,
+      "volume": 828,
+      "cours_veille": 21000,
       "cours_ouverture": 21490,
-      "cours_cloture": 21300,
-      "variation_pct": -0.93
+      "cours_cloture": 21000,
+      "variation_pct": -2.33
     },
     {
       "code": "ORGT",
@@ -368,7 +368,7 @@
     {
       "code": "SNTS",
       "nom": "SONATEL SENEGAL",
-      "volume": 215079,
+      "volume": 215659,
       "cours_veille": 4200,
       "cours_ouverture": 4200,
       "cours_cloture": 4150,
@@ -440,7 +440,7 @@
     {
       "code": "UNXC",
       "nom": "UNIWAX COTE D'IVOIRE",
-      "volume": 20468,
+      "volume": 20498,
       "cours_veille": 2105,
       "cours_ouverture": 2150,
       "cours_cloture": 2100,
