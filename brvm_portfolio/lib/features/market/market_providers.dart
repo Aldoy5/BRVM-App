@@ -788,19 +788,26 @@ class MarketStocksNotifier extends Notifier<List<Stock>> {
     ref.read(lastMarketUpdateTimeProvider.notifier).updateTime(DateTime.now());
   }
 
-  /// Rafraîchit les cours officiels depuis le référentiel Firestore
-  Future<void> refreshLiveQuotes() async {
+  /// Rafraîchit les cours officiels depuis le site BRVM et synchronise Firestore
+  Future<RefreshQuotesResult> refreshLiveQuotes() async {
     ref.read(isMarketRefreshingProvider.notifier).setRefreshing(true);
     try {
       final repo = ref.read(marketRepositoryProvider);
-      final remoteQuotes = await repo.refreshQuotesFromSource();
+      final result = await repo.refreshQuotesFromSource(currentStocks: state);
 
-      if (remoteQuotes.isNotEmpty) {
-        state = remoteQuotes;
+      if (result.stocks.isNotEmpty) {
+        state = result.stocks;
       }
       ref.read(lastMarketUpdateTimeProvider.notifier).updateTime(DateTime.now());
+      return result;
     } catch (e) {
       debugPrint('[MarketNotifier] Erreur actualisation cotations : $e');
+      return RefreshQuotesResult(
+        stocks: state,
+        source: RefreshSource.firestoreFallback,
+        firestoreUpdated: false,
+        errorMessage: e.toString(),
+      );
     } finally {
       ref.read(isMarketRefreshingProvider.notifier).setRefreshing(false);
     }

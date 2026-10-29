@@ -6,12 +6,33 @@ import '../../core/models/stock.dart';
 import '../../features/market/market_providers.dart';
 import '../services/brvm_scraper_service.dart';
 
+/// Origine des données lors d'un rafraîchissement
+enum RefreshSource {
+  liveBrvm,
+  firestoreFallback,
+}
+
+/// Résultat détaillé d'une actualisation de cours
+class RefreshQuotesResult {
+  final List<Stock> stocks;
+  final RefreshSource source;
+  final bool firestoreUpdated;
+  final String? errorMessage;
+
+  const RefreshQuotesResult({
+    required this.stocks,
+    required this.source,
+    required this.firestoreUpdated,
+    this.errorMessage,
+  });
+}
+
 /// Référentiel des cotations de marché BRVM
 /// Stratégie hybride hautement disponible :
-/// 1. Collecte directe depuis l'application via [BrvmScraperService] (temps réel direct)
-/// 2. En cas d'échec : bascule automatiquement sur Firestore (`systeme/cotations_courantes`)
-/// 3. En cas de coupure totale : utilise le cache local de repli
-/// 4. Sauvegarde et accumulation continue de l'historique réel des cours
+/// 1. Collecte directe depuis l'application via [BrvmScraperService] (site officiel brvm.org)
+/// 2. Sauvegarde immédiate dans Firestore avec archivage quotidien de l'historique
+/// 3. En cas d'indisponibilité du site BRVM : repli automatique sur Firestore
+/// 4. En cas de coupure totale : cache statique local
 class MarketRepository {
   final FirebaseFirestore? _customFirestore;
   final BrvmScraperService _scraperService;
@@ -65,33 +86,49 @@ class MarketRepository {
     }
   }
 
-  /// Rafraîchit les cours : tente d'abord la collecte en direct depuis le site BRVM.
-  /// Si réussi, met à jour Firestore et l'historique sans jamais écraser les dates passées.
-  /// Si échec, puise dans Firestore.
-  Future<List<Stock>> refreshQuotesFromSource() async {
+  /// Rafraîchit les cours : collecte en direct depuis le site BRVM et synchronise Firestore.
+  /// En cas d'échec de la collecte directe, se rabat sur Firestore.
+  Future<RefreshQuotesResult> refreshQuotesFromSource({List<Stock>? currentStocks}) async {
     try {
       debugPrint('[MarketRepository] Démarrage de la collecte directe depuis la BRVM...');
       final scrapedQuotes = await _scraperService.collecterCotations();
 
       if (scrapedQuotes.isNotEmpty) {
-        debugPrint('[MarketRepository] Collecte directe BRVM réussie (${scrapedQuotes.length} titres).');
+        debugPrint('[MarketRepository] ✅ Collecte directe BRVM réussie (${scrapedQuotes.length} titres).');
 
-        // Met à jour la liste locale
-        final updatedStocks = _mergeScrapedQuotes(scrapedQuotes);
+        // Sauvegarde synchrone dans Firestore avec constitution de l'historique
+        bool firestoreUpdated = false;
+        String? saveError;
+        try {
+          await _sauvegarderDansFirestore(scrapedQuotes);
+          firestoreUpdated = true;
+          debugPrint('[MarketRepository] ✅ Synchronisation Firestore effectuée avec succès.');
+        } catch (e) {
+          saveError = e.toString();
+          debugPrint('[MarketRepository] ⚠️ Erreur lors de la sauvegarde Firestore : $e');
+        }
 
-        // Sauvegarde asynchrone dans Firestore avec constitution de l'historique
-        _sauvegarderDansFirestore(scrapedQuotes).catchError((e) {
-          debugPrint('[MarketRepository] Avertissement sauvegarde Firestore : $e');
-        });
+        // Met à jour la liste locale en préservant l'historique existant
+        final updatedStocks = _mergeScrapedQuotes(scrapedQuotes, currentStocks: currentStocks);
 
-        return updatedStocks;
+        return RefreshQuotesResult(
+          stocks: updatedStocks,
+          source: RefreshSource.liveBrvm,
+          firestoreUpdated: firestoreUpdated,
+          errorMessage: saveError,
+        );
       }
     } catch (e) {
-      debugPrint('[MarketRepository] Collecte directe impossible ($e). Repli sur la base de données...');
+      debugPrint('[MarketRepository] Collecte directe impossible ($e). Repli sur Firestore...');
     }
 
     // Repli automatique sur Firestore
-    return fetchLatestQuotes();
+    final fallbackStocks = await fetchLatestQuotes();
+    return RefreshQuotesResult(
+      stocks: fallbackStocks,
+      source: RefreshSource.firestoreFallback,
+      firestoreUpdated: false,
+    );
   }
 
   /// Récupère manuellement la dernière photo des cotations depuis Firestore
@@ -114,13 +151,20 @@ class MarketRepository {
     }
   }
 
-  /// Fusionne les cotations scrapées avec la liste de référence
-  List<Stock> _mergeScrapedQuotes(List<ScrapedStockQuote> quotes) {
+  /// Fusionne les cotations scrapées avec la liste de référence en conservant l'historique existant
+  List<Stock> _mergeScrapedQuotes(
+    List<ScrapedStockQuote> quotes, {
+    List<Stock>? currentStocks,
+  }) {
     final Map<String, ScrapedStockQuote> mapQuotes = {
       for (final q in quotes) q.code.toUpperCase(): q,
     };
 
-    return kInitialBRVMStocks.map((stockBase) {
+    final baseList = (currentStocks != null && currentStocks.isNotEmpty)
+        ? currentStocks
+        : kInitialBRVMStocks;
+
+    return baseList.map((stockBase) {
       final scraped = mapQuotes[stockBase.code.toUpperCase()];
       if (scraped == null) return stockBase;
 
@@ -128,12 +172,17 @@ class MarketRepository {
       final veille = scraped.previousClosePrice;
       final ouverture = scraped.openingPrice;
 
-      // Historique de cours réel : séance du jour (Veille -> Ouverture -> Clôture)
-      final List<double> hist = [
-        if (veille > 0) veille.toDouble(),
-        if (ouverture > 0 && ouverture != veille) ouverture.toDouble(),
-        if (cloture > 0) cloture.toDouble(),
-      ];
+      // Conserver l'historique existant s'il en possède déjà
+      final List<double> hist = List.from(stockBase.historicalPrices);
+      if (hist.isEmpty) {
+        if (veille > 0) hist.add(veille.toDouble());
+        if (ouverture > 0 && ouverture != veille) hist.add(ouverture.toDouble());
+        if (cloture > 0) hist.add(cloture.toDouble());
+      } else {
+        if (cloture > 0 && hist.last != cloture.toDouble()) {
+          hist.add(cloture.toDouble());
+        }
+      }
 
       return stockBase.copyWith(
         currentPrice: cloture,
@@ -204,73 +253,79 @@ class MarketRepository {
   /// Sauvegarde les cours dans Firestore en préservant l'historique sans jamais l'écraser
   Future<void> _sauvegarderDansFirestore(List<ScrapedStockQuote> quotes) async {
     final db = _firestore;
-    if (db == null) return;
+    if (db == null) {
+      throw Exception('Firestore non initialisé.');
+    }
 
-    try {
-      final docRef = db.collection('systeme').doc('cotations_courantes');
-      final existingDoc = await docRef.get();
-      final existingTitres = (existingDoc.exists && existingDoc.data() != null)
-          ? (existingDoc.data()!['titres'] as Map<String, dynamic>? ?? {})
-          : <String, dynamic>{};
+    final docRef = db.collection('systeme').doc('cotations_courantes');
+    final existingDoc = await docRef.get();
+    final existingTitres = (existingDoc.exists && existingDoc.data() != null)
+        ? (existingDoc.data()!['titres'] as Map<String, dynamic>? ?? {})
+        : <String, dynamic>{};
 
-      final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final Map<String, dynamic> titresMap = {};
+    final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final Map<String, dynamic> titresMap = {};
 
-      for (final q in quotes) {
-        final prev = existingTitres[q.code] as Map<String, dynamic>? ?? {};
-        List<dynamic> historique = [];
-        if (prev['historique'] is List) {
-          historique = List.from(prev['historique'] as List);
-        }
+    // Utilisation d'un WriteBatch pour garantir une écriture atomique et rapide (49 documents)
+    final batch = db.batch();
 
-        // Actualiser ou ajouter la séance du jour dans l'historique
-        final idx = historique.indexWhere((h) => h is Map && h['date'] == dateStr);
-        if (idx >= 0) {
-          historique[idx] = {'date': dateStr, 'cours': q.closingPrice};
-        } else {
-          historique.add({'date': dateStr, 'cours': q.closingPrice});
-        }
-
-        // Conserver les 60 dernières séances
-        if (historique.length > 60) {
-          historique = historique.sublist(historique.length - 60);
-        }
-
-        titresMap[q.code] = {
-          'code': q.code,
-          'nom': q.name,
-          'cours_cloture': q.closingPrice,
-          'cours_veille': q.previousClosePrice,
-          'cours_ouverture': q.openingPrice,
-          'variation_pct': q.dailyVariation,
-          'volume': q.volume,
-          'date_maj': q.date.toIso8601String(),
-          'historique': historique,
-        };
-
-        // Sauvegarde immuable quotidienne par sous-collection
-        db.collection('titres').doc(q.code).collection('cours').doc(dateStr).set({
-          'code': q.code,
-          'date': dateStr,
-          'cours': q.closingPrice,
-          'cours_veille': q.previousClosePrice,
-          'cours_ouverture': q.openingPrice,
-          'variation_pct': q.dailyVariation,
-          'volume': q.volume,
-          'mis_a_jour': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true)).catchError((_) {});
+    for (final q in quotes) {
+      final prev = existingTitres[q.code] as Map<String, dynamic>? ?? {};
+      List<dynamic> historique = [];
+      if (prev['historique'] is List) {
+        historique = List.from(prev['historique'] as List);
       }
 
-      await docRef.set({
-        'titres': titresMap,
-        'derniere_maj': FieldValue.serverTimestamp(),
-        'source': 'direct_app_scraper',
-        'date_collecte': dateStr,
-      }, SetOptions(merge: true));
+      // Actualiser ou ajouter la séance du jour dans l'historique cumulé
+      final idx = historique.indexWhere((h) => h is Map && h['date'] == dateStr);
+      if (idx >= 0) {
+        historique[idx] = {'date': dateStr, 'cours': q.closingPrice};
+      } else {
+        historique.add({'date': dateStr, 'cours': q.closingPrice});
+      }
 
-      debugPrint('[MarketRepository] ✅ Cotations et historique sauvegardés dans Firestore.');
-    } catch (e) {
-      debugPrint('[MarketRepository] Erreur sauvegarde Firestore : $e');
+      // Conserver les 90 dernières séances
+      if (historique.length > 90) {
+        historique = historique.sublist(historique.length - 90);
+      }
+
+      titresMap[q.code] = {
+        'code': q.code,
+        'nom': q.name,
+        'cours_cloture': q.closingPrice,
+        'cours_veille': q.previousClosePrice,
+        'cours_ouverture': q.openingPrice,
+        'variation_pct': q.dailyVariation,
+        'volume': q.volume,
+        'date_maj': q.date.toIso8601String(),
+        'historique': historique,
+      };
+
+      // Sauvegarde immuable quotidienne par sous-collection (historique permanent)
+      final historyRef = db.collection('titres').doc(q.code).collection('cours').doc(dateStr);
+      batch.set(historyRef, {
+        'code': q.code,
+        'date': dateStr,
+        'cours': q.closingPrice,
+        'cours_veille': q.previousClosePrice,
+        'cours_ouverture': q.openingPrice,
+        'variation_pct': q.dailyVariation,
+        'volume': q.volume,
+        'mis_a_jour': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     }
+
+    // Mise à jour du document global consolidé
+    batch.set(docRef, {
+      'titres': titresMap,
+      'derniere_maj': FieldValue.serverTimestamp(),
+      'source': 'direct_app_scraper',
+      'date_collecte': dateStr,
+      'nb_titres': quotes.length,
+    }, SetOptions(merge: true));
+
+    // Exécution du lot d'écritures
+    await batch.commit();
+    debugPrint('[MarketRepository] ✅ WriteBatch Firestore réussi (${quotes.length} cours + historique).');
   }
 }

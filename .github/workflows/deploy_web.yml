@@ -3,6 +3,8 @@ name: Deploy Flutter Web to GitHub Pages
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'functions/brvm_cours.json'
   workflow_dispatch:
 
 permissions:

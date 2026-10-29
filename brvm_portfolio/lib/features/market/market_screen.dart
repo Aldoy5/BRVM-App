@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
 import 'market_providers.dart';
 import 'market_sync_service.dart';
+import '../../data/repositories/market_repository.dart';
 import 'widgets/stock_list_tile.dart';
 
 /// Écran Marché affichant l'ensemble de la cote BRVM avec un design épuré et minimaliste
@@ -92,15 +93,48 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                             onTap: isRefreshing
                                 ? null
                                 : () async {
-                                    await ref
+                                    final result = await ref
                                         .read(marketStocksProvider.notifier)
                                         .refreshLiveQuotes();
                                     if (context.mounted) {
+                                      final String message;
+                                      final IconData icon;
+                                      final Color bannerColor;
+
+                                      if (result.source == RefreshSource.liveBrvm) {
+                                        if (result.firestoreUpdated) {
+                                          message = 'Cotations BRVM récupérées en direct et synchronisées dans Firestore (${result.stocks.length} titres)';
+                                          icon = Icons.cloud_done;
+                                          bannerColor = const Color(0xFF1B4332);
+                                        } else {
+                                          message = 'Cotations en direct récupérées (sauvegarde Firestore en attente)';
+                                          icon = Icons.warning_amber_rounded;
+                                          bannerColor = Colors.orange.shade800;
+                                        }
+                                      } else {
+                                        message = 'Site BRVM injoignable : cours rechargés depuis Firestore';
+                                        icon = Icons.cloud_download_outlined;
+                                        bannerColor = const Color(0xFF2C3E50);
+                                      }
+
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Données du marché actualisées'),
-                                          duration: Duration(seconds: 2),
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              Icon(icon, color: Colors.white, size: 20),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Text(
+                                                  message,
+                                                  style: const TextStyle(fontWeight: FontWeight.w500),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: bannerColor,
+                                          duration: const Duration(seconds: 3),
                                           behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                         ),
                                       );
                                     }

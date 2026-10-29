@@ -1,11 +1,10 @@
 name: Collecte et Synchronisation Cotations BRVM
 
 on:
-  schedule:
-    # Du lundi au vendredi, toutes les 15 minutes entre 09h00 et 15h30 GMT (horaires séance BRVM)
-    # Décalé de 3 minutes (:03, :18, :33, :48) pour éviter les bouchons de GitHub Actions à :00/:15/:30/:45
-    - cron: '3,18,33,48 9-15 * * 1-5'
-  workflow_dispatch: # Déclenchement manuel à la demande depuis GitHub
+  # Collecte planifiée désactivée : la collecte et la mise à jour de l'historique Firestore sont gérées directement par l'application
+  # schedule:
+  #   - cron: '3,18,33,48 9-15 * * 1-5'
+  workflow_dispatch: # Déclenchement manuel à la demande depuis GitHub si besoin ponctuel
 
 # Empêche les exécutions concurrentes du même workflow
 concurrency:
@@ -24,7 +23,6 @@ jobs:
       - name: Récupérer le code source
         uses: actions/checkout@v4
         with:
-          # Utiliser le token par défaut avec permissions d'écriture
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configurer Node.js
