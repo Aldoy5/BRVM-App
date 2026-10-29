@@ -52,5 +52,6 @@ jobs:
             echo "Aucune modification des cotations à valider."
           else
             git commit -m "chore(cotations): actualisation automatique des cours BRVM"
+            git pull --rebase origin main
             git push
           fi
