@@ -1,9 +1,9 @@
 name: Collecte et Synchronisation Cotations BRVM
 
 on:
-  # Collecte planifiée désactivée : la collecte et la mise à jour de l'historique Firestore sont gérées directement par l'application
-  # schedule:
-  #   - cron: '3,18,33,48 9-15 * * 1-5'
+  # Du lundi au vendredi, toutes les 15 minutes pendant la séance BRVM (UTC/GMT)
+  schedule:
+    - cron: '3,18,33,48 9-15 * * 1-5'
   workflow_dispatch: # Déclenchement manuel à la demande depuis GitHub si besoin ponctuel
 
 # Empêche les exécutions concurrentes du même workflow
