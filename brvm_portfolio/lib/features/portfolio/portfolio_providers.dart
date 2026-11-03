@@ -4,14 +4,12 @@ import '../../core/models/position.dart';
 import '../../core/models/portfolio_summary.dart';
 import '../history/history_providers.dart';
 import '../market/market_providers.dart';
-import 'portfolio_statement_providers.dart';
 
 /// Provider calculant la liste des positions ouvertes détenues en portefeuille
 /// à partir des opérations enregistrées et des cours actuels du marché.
 final portfolioPositionsProvider = Provider<List<Position>>((ref) {
   final operations = ref.watch(operationsProvider);
   final stocks = ref.watch(marketStocksProvider);
-  final imported = ref.watch(portfolioStatementProvider);
 
   // Map des titres par code pour un accès O(1)
   final stockMap = {for (final s in stocks) s.code.toUpperCase(): s};
@@ -22,12 +20,7 @@ final portfolioPositionsProvider = Provider<List<Position>>((ref) {
   final Map<String, int> quantities = {};
   final Map<String, double> prus = {};
 
-  final beforeSnapshot = imported == null
-      ? sortedOps
-      : imported.merge
-          ? sortedOps.where((op) => !op.date.isAfter(imported.date)).toList()
-          : <Operation>[];
-  for (final op in beforeSnapshot) {
+  for (final op in sortedOps) {
     if (!op.type.isStockOperation || op.stockCode == null) continue;
     final code = op.stockCode!.toUpperCase();
     final qty = op.quantity ?? 0;
@@ -47,30 +40,6 @@ final portfolioPositionsProvider = Provider<List<Position>>((ref) {
       final newQty = currentQty - qty;
       quantities[code] = newQty > 0 ? newQty : 0;
       // Le PRU reste inchangé lors d'une cession en comptabilité PMP
-    }
-  }
-
-  if (imported != null) {
-    for (final holding in imported.holdings) {
-      final code = holding.code.toUpperCase();
-      quantities[code] = holding.quantity;
-      prus[code] = holding.costPrice.toDouble();
-    }
-    for (final op in sortedOps.where((op) => op.date.isAfter(imported.date))) {
-      if (!op.type.isStockOperation || op.stockCode == null) continue;
-      final code = op.stockCode!.toUpperCase();
-      final qty = op.quantity ?? 0;
-      if (op.type == OperationType.achat) {
-        final oldQty = quantities[code] ?? 0;
-        final oldPru = prus[code] ?? 0.0;
-        final newQty = oldQty + qty;
-        quantities[code] = newQty;
-        prus[code] = newQty > 0
-            ? (oldQty * oldPru + qty * (op.unitPrice ?? 0) + op.fees) / newQty
-            : 0;
-      } else {
-        quantities[code] = ((quantities[code] ?? 0) - qty).clamp(0, 1 << 30);
-      }
     }
   }
 
