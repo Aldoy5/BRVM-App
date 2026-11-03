@@ -8,6 +8,7 @@ import '../market/market_sync_service.dart';
 import 'portfolio_providers.dart';
 import 'widgets/portfolio_summary_card.dart';
 import 'widgets/position_list_tile.dart';
+import 'portfolio_import_screen.dart';
 
 /// Écran principal du Portefeuille (Accueil) selon le design épuré sans AppBar
 class PortfolioScreen extends ConsumerWidget {
@@ -38,6 +39,16 @@ class PortfolioScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => const PortfolioImportScreen(),
+                      )),
+                      icon: const Icon(Icons.upload_file_outlined),
+                      label: const Text('Importer un relevé'),
+                    ),
+                  ),
                   // Synthèse du portefeuille : en-tête épuré, pills de gains, solde disponible
                   PortfolioSummaryCard(summary: summary),
                   const SizedBox(height: 16),
