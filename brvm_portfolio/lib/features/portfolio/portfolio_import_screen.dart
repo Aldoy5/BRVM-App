@@ -1,10 +1,13 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/models/operation.dart';
 import '../../data/repositories/portfolio_statement_repository.dart';
 import '../pdf_import/data/bici_portfolio_statement_parser.dart';
 import '../pdf_import/data/pdf_line_builder.dart';
+import '../pdf_import/data/pdf_text_extractor.dart';
 import '../pdf_import/data/syncfusion_pdf_extractor.dart';
+import '../market/market_providers.dart';
 import 'portfolio_statement_providers.dart';
 import '../history/history_providers.dart';
 import 'portfolio_providers.dart';
