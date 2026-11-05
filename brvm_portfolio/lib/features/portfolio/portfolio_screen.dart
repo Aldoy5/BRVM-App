@@ -56,6 +56,7 @@ class PortfolioScreen extends ConsumerWidget {
                       clipBehavior: Clip.antiAlias,
                       child: Column(
                         children: [
+                          _ImportBanner(onTap: () => context.push('/import-statement')),
                           for (int i = 0; i < positions.length; i++)
                             PositionListTile(
                               position: positions[i],
@@ -116,6 +117,48 @@ class PortfolioScreen extends ConsumerWidget {
               icon: const Icon(Icons.add),
               label: const Text('Enregistrer un achat'),
             ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/import-statement'),
+              icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+              label: const Text('Importer un relev� PDF'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Banni�re compacte d'import PDF dans la carte des positions
+class _ImportBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ImportBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.border, width: 0.8)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.picture_as_pdf_outlined, size: 16, color: AppColors.primary),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Importer un relev� de compte BICI Bourse',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 12, color: AppColors.textTertiary),
           ],
         ),
       ),

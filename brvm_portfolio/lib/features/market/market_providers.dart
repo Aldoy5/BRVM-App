@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/stock.dart';
@@ -770,23 +770,6 @@ class MarketStocksNotifier extends Notifier<List<Stock>> {
     return kInitialBRVMStocks;
   }
 
-  /// Met à jour manuellement un cours
-  void updateStockPrice(String code, int newPrice) {
-    state = [
-      for (final stock in state)
-        if (stock.code.toUpperCase() == code.toUpperCase())
-          stock.copyWith(
-            currentPrice: newPrice,
-            dailyVariation: stock.previousClosePrice > 0
-                ? ((newPrice - stock.previousClosePrice) / stock.previousClosePrice) * 100
-                : 0.0,
-            lastUpdated: DateTime.now(),
-          )
-        else
-          stock,
-    ];
-    ref.read(lastMarketUpdateTimeProvider.notifier).updateTime(DateTime.now());
-  }
 
   /// Rafraîchit les cours officiels depuis le site BRVM et synchronise Firestore
   Future<RefreshQuotesResult> refreshLiveQuotes() async {
