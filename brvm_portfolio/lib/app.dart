@@ -14,6 +14,7 @@ import 'features/market/market_sync_service.dart';
 import 'features/operation_form/operation_form_screen.dart';
 import 'features/portfolio/portfolio_screen.dart';
 import 'features/stock_detail/stock_detail_screen.dart';
+import 'features/pdf_import/ui/statement_import_screen.dart';
 
 // Clé de navigation globale
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -133,6 +134,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             initialType: type,
           );
         },
+      ),
+
+      // Import relev� de compte BICI Bourse
+      GoRoute(
+        path: '/import-statement',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const StatementImportScreen(),
       ),
 
       // Formulaire de modification d'opération existante

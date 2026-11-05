@@ -8,7 +8,6 @@ import '../market/market_sync_service.dart';
 import 'portfolio_providers.dart';
 import 'widgets/portfolio_summary_card.dart';
 import 'widgets/position_list_tile.dart';
-import 'portfolio_import_screen.dart';
 
 /// Écran principal du Portefeuille (Accueil) selon le design épuré sans AppBar
 class PortfolioScreen extends ConsumerWidget {
@@ -39,16 +38,6 @@ class PortfolioScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => const PortfolioImportScreen(),
-                      )),
-                      icon: const Icon(Icons.upload_file_outlined),
-                      label: const Text('Importer un relevé'),
-                    ),
-                  ),
                   // Synthèse du portefeuille : en-tête épuré, pills de gains, solde disponible
                   PortfolioSummaryCard(summary: summary),
                   const SizedBox(height: 16),
@@ -67,6 +56,7 @@ class PortfolioScreen extends ConsumerWidget {
                       clipBehavior: Clip.antiAlias,
                       child: Column(
                         children: [
+                          _ImportBanner(onTap: () => context.push('/import-statement')),
                           for (int i = 0; i < positions.length; i++)
                             PositionListTile(
                               position: positions[i],
@@ -127,6 +117,48 @@ class PortfolioScreen extends ConsumerWidget {
               icon: const Icon(Icons.add),
               label: const Text('Enregistrer un achat'),
             ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/import-statement'),
+              icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+              label: const Text('Importer un relev� PDF'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Banni�re compacte d'import PDF dans la carte des positions
+class _ImportBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ImportBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.border, width: 0.8)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.picture_as_pdf_outlined, size: 16, color: AppColors.primary),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Importer un relev� de compte BICI Bourse',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 12, color: AppColors.textTertiary),
           ],
         ),
       ),

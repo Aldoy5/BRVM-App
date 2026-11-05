@@ -66,3 +66,7 @@ ui-debug.log*
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Personal statement files
+*.pdf
+statement.png
