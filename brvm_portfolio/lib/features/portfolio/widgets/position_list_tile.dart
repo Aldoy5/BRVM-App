@@ -3,16 +3,18 @@ import 'package:intl/intl.dart';
 import '../../../core/constants.dart';
 import '../../../core/formatters.dart';
 import '../../../core/models/position.dart';
+import '../portfolio_display_mode.dart';
 
 /// Ligne d'affichage d'une position détenue dans le portefeuille.
 /// Présente :
 /// - Le ticker, le nombre de titres et le nom du titre
 /// - La valorisation actuelle
-/// - La plus-value / moins-value totale (latente) en montant et % (vert/rouge)
+/// - La plus-value / moins-value (totale ou journalière selon le mode) en montant et % (vert/rouge)
 /// - Le poids du titre dans le portefeuille avec une barre de progression colorée (vert/rouge).
 class PositionListTile extends StatelessWidget {
   final Position position;
   final int portfolioTotalValuation;
+  final PortfolioDisplayMode displayMode;
   final VoidCallback? onTap;
   final bool showDivider;
 
@@ -20,6 +22,7 @@ class PositionListTile extends StatelessWidget {
     super.key,
     required this.position,
     this.portfolioTotalValuation = 0,
+    this.displayMode = PortfolioDisplayMode.total,
     this.onTap,
     this.showDivider = true,
   });
@@ -35,11 +38,14 @@ class PositionListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalGainLoss = position.totalGainLoss;
-    final totalGainLossPct = position.totalGainLossPercent;
+    final isSession = displayMode == PortfolioDisplayMode.session;
 
-    final isGain = totalGainLoss > 0;
-    final isLoss = totalGainLoss < 0;
+    // Gain/Perte à afficher : total (vs PRU) ou journalier (vs veille)
+    final gainLoss = isSession ? position.dailyGainLoss : position.totalGainLoss;
+    final gainLossPct = isSession ? position.dailyVariation : position.totalGainLossPercent;
+
+    final isGain = gainLoss > 0;
+    final isLoss = gainLoss < 0;
 
     // Couleur financière : vert si gain, rouge si perte, gris neutre si équilibré
     final Color statusColor = isGain
@@ -47,8 +53,8 @@ class PositionListTile extends StatelessWidget {
         : (isLoss ? AppColors.loss : AppColors.neutral);
 
     // Formatage de la plus-value / moins-value
-    final String gainLossStr = AppFormatters.formatVariationAmount(totalGainLoss);
-    final String gainLossPctStr = AppFormatters.formatPercentWithSign(totalGainLossPct);
+    final String gainLossStr = AppFormatters.formatVariationAmount(gainLoss);
+    final String gainLossPctStr = AppFormatters.formatPercentWithSign(gainLossPct);
 
     // Formatage du poids (ex: "15,2 %")
     final String weightStr = '${NumberFormat('0.0', 'fr_FR').format(weightPercent)} %';
@@ -117,7 +123,7 @@ class PositionListTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
 
-                    // Droite : Valorisation actuelle et Gain / Perte total
+                    // Droite : Valorisation actuelle et Gain / Perte (selon le mode)
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [

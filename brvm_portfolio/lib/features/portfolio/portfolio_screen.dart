@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants.dart';
 import '../market/market_providers.dart';
 import '../market/market_sync_service.dart';
+import 'portfolio_display_mode.dart';
 import 'portfolio_providers.dart';
 import 'widgets/portfolio_summary_card.dart';
 import 'widgets/position_list_tile.dart';
@@ -20,6 +21,7 @@ class PortfolioScreen extends ConsumerWidget {
 
     final summary = ref.watch(portfolioSummaryProvider);
     final positions = ref.watch(portfolioPositionsProvider);
+    final displayMode = ref.watch(portfolioDisplayModeProvider);
 
     // Maintien des références aux providers existants
     ref.watch(currentSessionStatusProvider);
@@ -38,7 +40,7 @@ class PortfolioScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Synthèse du portefeuille : en-tête épuré, pills de gains, solde disponible
+                  // Synthèse du portefeuille : en-tête épuré, toggle, pill de gains, solde disponible
                   PortfolioSummaryCard(summary: summary),
                   const SizedBox(height: 16),
 
@@ -61,6 +63,7 @@ class PortfolioScreen extends ConsumerWidget {
                             PositionListTile(
                               position: positions[i],
                               portfolioTotalValuation: summary.totalValuation,
+                              displayMode: displayMode,
                               showDivider: i < positions.length - 1,
                               onTap: () => context.push('/stock/${positions[i].stockCode}'),
                             ),
@@ -122,7 +125,7 @@ class PortfolioScreen extends ConsumerWidget {
             OutlinedButton.icon(
               onPressed: () => context.push('/import-statement'),
               icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-              label: const Text('Importer un relev� PDF'),
+              label: const Text('Importer un relevé PDF'),
             ),
           ],
         ),
@@ -131,7 +134,7 @@ class PortfolioScreen extends ConsumerWidget {
   }
 }
 
-/// Banni�re compacte d'import PDF dans la carte des positions
+/// Bannière compacte d'import PDF dans la carte des positions
 class _ImportBanner extends StatelessWidget {
   final VoidCallback onTap;
   const _ImportBanner({required this.onTap});
@@ -151,7 +154,7 @@ class _ImportBanner extends StatelessWidget {
             SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Importer un relev� de compte BICI Bourse',
+                'Importer un relevé de compte BICI Bourse',
                 style: TextStyle(
                   fontSize: 13,
                   color: AppColors.primary,

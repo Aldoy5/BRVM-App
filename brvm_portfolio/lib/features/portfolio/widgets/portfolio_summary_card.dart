@@ -8,6 +8,7 @@ import '../../../core/formatters.dart';
 import '../../../core/models/portfolio_summary.dart';
 import '../../auth/auth_providers.dart';
 import '../../history/history_providers.dart';
+import '../portfolio_display_mode.dart';
 
 /// En-tête et synthèse financière du portefeuille selon le mockup épuré
 class PortfolioSummaryCard extends ConsumerWidget {
@@ -103,6 +104,7 @@ class PortfolioSummaryCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dateStr = DateFormat('dd/MM/yyyy').format(summary.marketDate);
     final user = ref.watch(currentUserProvider);
+    final displayMode = ref.watch(portfolioDisplayModeProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,17 +192,21 @@ class PortfolioSummaryCard extends ConsumerWidget {
         ),
         const SizedBox(height: 14),
 
-        // Deux bannières/pills vertes pour les gains
+        // Commutateur Global / Séance (toggle animé style iOS)
+        _buildDisplayModeToggle(ref),
+        const SizedBox(height: 10),
+
+        // Pill de performance dynamique selon le mode sélectionné
         _buildGainPill(
-          label: "Aujourd'hui",
-          amount: summary.dailyGainLoss,
-          percent: summary.dailyGainLossPercent,
-        ),
-        const SizedBox(height: 8),
-        _buildGainPill(
-          label: "Depuis l'investissement",
-          amount: summary.totalGainLoss,
-          percent: summary.totalGainLossPercent,
+          label: displayMode == PortfolioDisplayMode.session
+              ? "Aujourd'hui"
+              : "Depuis l'investissement",
+          amount: displayMode == PortfolioDisplayMode.session
+              ? summary.dailyGainLoss
+              : summary.totalGainLoss,
+          percent: displayMode == PortfolioDisplayMode.session
+              ? summary.dailyGainLossPercent
+              : summary.totalGainLossPercent,
         ),
         const SizedBox(height: 14),
 
@@ -268,6 +274,89 @@ class PortfolioSummaryCard extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  /// Construit le commutateur à bascule « Depuis l'achat » / « Aujourd'hui ».
+  Widget _buildDisplayModeToggle(WidgetRef ref) {
+    final mode = ref.watch(portfolioDisplayModeProvider);
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: AppColors.neutralLight,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          _buildToggleButton(
+            ref: ref,
+            label: "Depuis l'achat",
+            icon: Icons.trending_up,
+            mode: PortfolioDisplayMode.total,
+            isSelected: mode == PortfolioDisplayMode.total,
+          ),
+          _buildToggleButton(
+            ref: ref,
+            label: "Aujourd'hui",
+            icon: Icons.today,
+            mode: PortfolioDisplayMode.session,
+            isSelected: mode == PortfolioDisplayMode.session,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleButton({
+    required WidgetRef ref,
+    required String label,
+    required IconData icon,
+    required PortfolioDisplayMode mode,
+    required bool isSelected,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => ref.read(portfolioDisplayModeProvider.notifier).setMode(mode),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          margin: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected ? AppColors.primary : AppColors.textTertiary,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? AppColors.textPrimary : AppColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
