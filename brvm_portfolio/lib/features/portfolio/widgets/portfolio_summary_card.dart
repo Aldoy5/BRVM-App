@@ -46,6 +46,90 @@ class PortfolioSummaryCard extends ConsumerWidget {
     );
   }
 
+  void _showExplanationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: AppColors.primary, size: 22),
+            SizedBox(width: 8),
+            Text(
+              'Comprendre les chiffres',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildHelpSection(
+                title: '💼 Valorisation totale',
+                content:
+                    'Valeur de l\'ensemble de vos actions au cours actuel du marché (Quantité × Cours).',
+              ),
+              const Divider(height: 20),
+              _buildHelpSection(
+                title: '📈 Mode « Depuis l\'achat »',
+                content:
+                    '• PRU (Prix de Revient Unitaire) : Coût moyen d\'achat par action, frais de courtage SGI et taxes inclus.\n'
+                    '• Plus/Moins-value latente : Gain ou perte théorique calculé par rapport à votre PRU : Quantité × (Cours - PRU).',
+              ),
+              const Divider(height: 20),
+              _buildHelpSection(
+                title: '📅 Mode « Aujourd\'hui »',
+                content:
+                    '• Gain / Perte du jour : Variation financière sur la séance actuelle par rapport au cours de clôture de la veille : Quantité × (Cours - Cours Veille).',
+              ),
+              const Divider(height: 20),
+              _buildHelpSection(
+                title: '📊 Barre de progression & Couleur',
+                content:
+                    '• Pourcentage : Poids du titre dans votre portefeuille d\'actions.\n'
+                    '• Couleur verte : Titre en gain.\n'
+                    '• Couleur rouge : Titre en perte.',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('J\'ai compris'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpSection({required String title, required String content}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          content,
+          style: const TextStyle(
+            fontSize: 12.5,
+            height: 1.4,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+
   void _showReconcileDialog(BuildContext context, WidgetRef ref) {
     final currentBalance = ref.read(sgiDeclaredBalanceProvider);
     final controller = TextEditingController(
@@ -105,6 +189,7 @@ class PortfolioSummaryCard extends ConsumerWidget {
     final dateStr = DateFormat('dd/MM/yyyy').format(summary.marketDate);
     final user = ref.watch(currentUserProvider);
     final displayMode = ref.watch(portfolioDisplayModeProvider);
+    final isSession = displayMode == PortfolioDisplayMode.session;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,14 +253,31 @@ class PortfolioSummaryCard extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
 
-        // Label 'Valorisation totale'
-        const Text(
-          'Valorisation totale',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textSecondary,
-          ),
+        // Label 'Valorisation totale' avec bouton d'aide explicative
+        Row(
+          children: [
+            const Text(
+              'Valorisation totale',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: () => _showExplanationDialog(context),
+              borderRadius: BorderRadius.circular(12),
+              child: const Padding(
+                padding: EdgeInsets.all(2.0),
+                child: Icon(
+                  Icons.help_outline,
+                  size: 16,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 4),
 
@@ -198,15 +300,12 @@ class PortfolioSummaryCard extends ConsumerWidget {
 
         // Pill de performance dynamique selon le mode sélectionné
         _buildGainPill(
-          label: displayMode == PortfolioDisplayMode.session
-              ? "Aujourd'hui"
-              : "Depuis l'investissement",
-          amount: displayMode == PortfolioDisplayMode.session
-              ? summary.dailyGainLoss
-              : summary.totalGainLoss,
-          percent: displayMode == PortfolioDisplayMode.session
-              ? summary.dailyGainLossPercent
-              : summary.totalGainLossPercent,
+          label: isSession ? "Gain du jour (vs veille)" : "Plus-value totale (vs PRU)",
+          subtitle: isSession
+              ? "Variation sur la séance par rapport au cours de la veille"
+              : "Plus-value latente calculée par rapport au coût de revient (PRU)",
+          amount: isSession ? summary.dailyGainLoss : summary.totalGainLoss,
+          percent: isSession ? summary.dailyGainLossPercent : summary.totalGainLossPercent,
         ),
         const SizedBox(height: 14),
 
@@ -281,7 +380,7 @@ class PortfolioSummaryCard extends ConsumerWidget {
   Widget _buildDisplayModeToggle(WidgetRef ref) {
     final mode = ref.watch(portfolioDisplayModeProvider);
     return Container(
-      height: 36,
+      height: 38,
       decoration: BoxDecoration(
         color: AppColors.neutralLight,
         borderRadius: BorderRadius.circular(10),
@@ -290,14 +389,14 @@ class PortfolioSummaryCard extends ConsumerWidget {
         children: [
           _buildToggleButton(
             ref: ref,
-            label: "Depuis l'achat",
+            label: "Depuis l'achat (PRU)",
             icon: Icons.trending_up,
             mode: PortfolioDisplayMode.total,
             isSelected: mode == PortfolioDisplayMode.total,
           ),
           _buildToggleButton(
             ref: ref,
-            label: "Aujourd'hui",
+            label: "Aujourd'hui (Séance)",
             icon: Icons.today,
             mode: PortfolioDisplayMode.session,
             isSelected: mode == PortfolioDisplayMode.session,
@@ -348,7 +447,7 @@ class PortfolioSummaryCard extends ConsumerWidget {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? AppColors.textPrimary : AppColors.textTertiary,
                 ),
@@ -362,6 +461,7 @@ class PortfolioSummaryCard extends ConsumerWidget {
 
   Widget _buildGainPill({
     required String label,
+    required String subtitle,
     required int amount,
     required double percent,
   }) {
@@ -376,7 +476,7 @@ class PortfolioSummaryCard extends ConsumerWidget {
         : (isLoss ? const Color(0xFFD32F2F) : const Color(0xFF1F6B47));
 
     final sign = amount > 0 ? '+' : (amount < 0 ? '-' : '');
-    final amtStr = '$sign${AppFormatters.formatInteger(amount.abs())}';
+    final amtStr = '$sign${AppFormatters.formatInteger(amount.abs())} FCFA';
 
     final pctSign = percent > 0 ? '+' : (percent < 0 ? '-' : '');
     final pctValue = NumberFormat('0.00', 'fr_FR').format(percent.abs());
@@ -384,19 +484,45 @@ class PortfolioSummaryCard extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(
-        '$label $amtStr ($pctStr)',
-        style: TextStyle(
-          color: textColor,
-          fontSize: 13.5,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.1,
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                '$amtStr ($pctStr)',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: textColor.withValues(alpha: 0.8),
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
       ),
     );
   }

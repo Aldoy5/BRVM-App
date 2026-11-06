@@ -8,8 +8,9 @@ import '../portfolio_display_mode.dart';
 /// Ligne d'affichage d'une position détenue dans le portefeuille.
 /// Présente :
 /// - Le ticker, le nombre de titres et le nom du titre
+/// - Le détail des prix (PRU & Cours en mode Total, Cours & Veille en mode Séance)
 /// - La valorisation actuelle
-/// - La plus-value / moins-value (totale ou journalière selon le mode) en montant et % (vert/rouge)
+/// - La plus-value / moins-value (totale ou séance selon le mode) avec label explicite
 /// - Le poids du titre dans le portefeuille avec une barre de progression colorée (vert/rouge).
 class PositionListTile extends StatelessWidget {
   final Position position;
@@ -59,6 +60,11 @@ class PositionListTile extends StatelessWidget {
     // Formatage du poids (ex: "15,2 %")
     final String weightStr = '${NumberFormat('0.0', 'fr_FR').format(weightPercent)} %';
 
+    // Sous-titre détaillant les prix servant au calcul selon le mode
+    final String priceDetails = isSession
+        ? '${position.stockName} • Cours ${AppFormatters.formatInteger(position.currentPrice)} F • Veille ${AppFormatters.formatInteger(position.previousClosePrice)} F'
+        : '${position.stockName} • PRU ${AppFormatters.formatInteger(position.pru.round())} F • Cours ${AppFormatters.formatInteger(position.currentPrice)} F';
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -74,7 +80,7 @@ class PositionListTile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Gauche : Ticker gras + badge quantité + nom et PRU
+                    // Gauche : Ticker gras + badge quantité + nom et repères de prix
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,9 +116,9 @@ class PositionListTile extends StatelessWidget {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            '${position.stockName} • PRU ${AppFormatters.formatInteger(position.pru.round())} F',
+                            priceDetails,
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 11.5,
                               color: AppColors.textTertiary,
                             ),
                             maxLines: 1,
@@ -123,7 +129,7 @@ class PositionListTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
 
-                    // Droite : Valorisation actuelle et Gain / Perte (selon le mode)
+                    // Droite : Valorisation actuelle et Gain / Perte avec libellé explicite
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -136,13 +142,26 @@ class PositionListTile extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          '$gainLossStr ($gainLossPctStr)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: statusColor,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              isSession ? 'Jour: ' : 'Total: ',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
+                            Text(
+                              '$gainLossStr ($gainLossPctStr)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: statusColor,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

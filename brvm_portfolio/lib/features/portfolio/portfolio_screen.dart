@@ -42,12 +42,41 @@ class PortfolioScreen extends ConsumerWidget {
                 children: [
                   // Synthèse du portefeuille : en-tête épuré, toggle, pill de gains, solde disponible
                   PortfolioSummaryCard(summary: summary),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   // Carte contenant la liste des positions
                   if (positions.isEmpty)
                     _buildEmptyState(context)
-                  else
+                  else ...[
+                    // En-tête de section avec indication du mode actif
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'MES TITRES (${positions.length})',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          Text(
+                            displayMode == PortfolioDisplayMode.session
+                                ? 'Affichage : Performance séance'
+                                : 'Affichage : Plus-value globale',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
                     Card(
                       elevation: 1,
                       shape: RoundedRectangleBorder(
@@ -70,6 +99,7 @@ class PortfolioScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
