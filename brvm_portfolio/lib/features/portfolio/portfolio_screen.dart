@@ -60,6 +60,7 @@ class PortfolioScreen extends ConsumerWidget {
                           for (int i = 0; i < positions.length; i++)
                             PositionListTile(
                               position: positions[i],
+                              portfolioTotalValuation: summary.totalValuation,
                               showDivider: i < positions.length - 1,
                               onTap: () => context.push('/stock/${positions[i].stockCode}'),
                             ),

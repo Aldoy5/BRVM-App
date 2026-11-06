@@ -4,37 +4,54 @@ import '../../../core/constants.dart';
 import '../../../core/formatters.dart';
 import '../../../core/models/position.dart';
 
-/// Ligne d'affichage d'une position détenue dans le portefeuille selon le design mockup
+/// Ligne d'affichage d'une position détenue dans le portefeuille.
+/// Présente :
+/// - Le ticker, le nombre de titres et le nom du titre
+/// - La valorisation actuelle
+/// - La plus-value / moins-value totale (latente) en montant et % (vert/rouge)
+/// - Le poids du titre dans le portefeuille avec une barre de progression colorée (vert/rouge).
 class PositionListTile extends StatelessWidget {
   final Position position;
+  final int portfolioTotalValuation;
   final VoidCallback? onTap;
   final bool showDivider;
 
   const PositionListTile({
     super.key,
     required this.position,
+    this.portfolioTotalValuation = 0,
     this.onTap,
     this.showDivider = true,
   });
 
+  /// Poids relatif dans le portefeuille (entre 0.0 et 1.0)
+  double get weightRatio {
+    if (portfolioTotalValuation <= 0 || position.totalValuation <= 0) return 0.0;
+    return (position.totalValuation / portfolioTotalValuation).clamp(0.0, 1.0);
+  }
+
+  /// Poids en pourcentage (0.0 à 100.0)
+  double get weightPercent => weightRatio * 100.0;
+
   @override
   Widget build(BuildContext context) {
-    final dailyGainLoss = position.dailyGainLoss;
-    final dailyVariation = position.dailyVariation;
+    final totalGainLoss = position.totalGainLoss;
+    final totalGainLossPct = position.totalGainLossPercent;
 
-    // Couleur financière (vert gain / rouge perte / gris neutre)
-    final Color dailyColor = dailyGainLoss > 0
+    final isGain = totalGainLoss > 0;
+    final isLoss = totalGainLoss < 0;
+
+    // Couleur financière : vert si gain, rouge si perte, gris neutre si équilibré
+    final Color statusColor = isGain
         ? AppColors.gain
-        : (dailyGainLoss < 0 ? AppColors.loss : AppColors.neutral);
+        : (isLoss ? AppColors.loss : AppColors.neutral);
 
-    // Formatage de la variation journalière en FCFA (+12 000)
-    final String amountSign = dailyGainLoss > 0 ? '+' : (dailyGainLoss < 0 ? '-' : '');
-    final String dailyAmountStr = '$amountSign${AppFormatters.formatInteger(dailyGainLoss.abs())}';
+    // Formatage de la plus-value / moins-value
+    final String gainLossStr = AppFormatters.formatVariationAmount(totalGainLoss);
+    final String gainLossPctStr = AppFormatters.formatPercentWithSign(totalGainLossPct);
 
-    // Formatage du pourcentage (+0,8 %)
-    final String pctSign = dailyVariation > 0 ? '+' : (dailyVariation < 0 ? '-' : '');
-    final String pctValue = NumberFormat('0.00', 'fr_FR').format(dailyVariation.abs());
-    final String dailyPctStr = '$pctSign$pctValue %';
+    // Formatage du poids (ex: "15,2 %")
+    final String weightStr = '${NumberFormat('0.0', 'fr_FR').format(weightPercent)} %';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -42,70 +59,115 @@ class PositionListTile extends StatelessWidget {
         InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Côté gauche : ticker gras + 'N titres' plus clair inline, montant investi en dessous
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: position.stockCode,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            TextSpan(
-                              text: '  ${position.quantity} titres',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        formatFCFA(position.investedAmount),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Côté droit : variation du jour en montant (+12 000, gras, coloré) et en % (+0,8 %, coloré, en dessous)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                // ─── 1. Ligne principale : Ticker / Titres à gauche | Valorisation / Gain-Perte à droite ───
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      dailyAmountStr,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: dailyColor,
+                    // Gauche : Ticker gras + badge quantité + nom et PRU
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                position.stockCode,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: AppColors.border, width: 0.6),
+                                ),
+                                child: Text(
+                                  '${position.quantity} titres',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${position.stockName} • PRU ${AppFormatters.formatInteger(position.pru.round())} F',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textTertiary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(width: 12),
+
+                    // Droite : Valorisation actuelle et Gain / Perte total
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          formatFCFA(position.totalValuation),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$gainLossStr ($gainLossPctStr)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: statusColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // ─── 2. Barre de progression du poids dans le portefeuille ───
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: SizedBox(
+                          height: 5,
+                          child: LinearProgressIndicator(
+                            value: weightRatio,
+                            backgroundColor: AppColors.neutralLight,
+                            valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Text(
-                      dailyPctStr,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: dailyColor,
+                      '$weightStr du portefeuille',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
