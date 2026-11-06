@@ -5,11 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:brvm_portfolio/core/constants.dart';
-import 'package:brvm_portfolio/features/pdf_import/data/bici_bourse_statement_parser.dart';
 import 'package:brvm_portfolio/features/pdf_import/statement_import_provider.dart';
 
 /// Écran permettant d'importer un Relevé de Compte Titres BICI Bourse
-/// et de pré-remplir le portefeuille en une seule fois.
+/// et de pré-remplir le portefeuille en une seule fois avec détection des titres existants.
 class StatementImportScreen extends ConsumerWidget {
   const StatementImportScreen({super.key});
 
@@ -40,8 +39,9 @@ class StatementImportScreen extends ConsumerWidget {
   ) {
     switch (state.status) {
       case StatementImportStatus.idle:
-        return _IdleView(onPickFile: (bytes, name) =>
-          ref.read(statementImportProvider.notifier).parsePdf(bytes, name),
+        return _IdleView(
+          onPickFile: (bytes, name) =>
+              ref.read(statementImportProvider.notifier).parsePdf(bytes, name),
         );
 
       case StatementImportStatus.parsing:
@@ -102,7 +102,6 @@ class _IdleView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Illustration
           const SizedBox(height: 32),
           Container(
             padding: const EdgeInsets.all(28),
@@ -114,15 +113,15 @@ class _IdleView extends StatelessWidget {
                 width: 1,
               ),
             ),
-            child: Column(
+            child: const Column(
               children: [
                 Icon(
                   Icons.picture_as_pdf_outlined,
                   size: 56,
                   color: AppColors.gain,
                 ),
-                const SizedBox(height: 16),
-                const Text(
+                SizedBox(height: 16),
+                Text(
                   'Relevé de Compte Titres',
                   style: TextStyle(
                     fontSize: 18,
@@ -131,10 +130,10 @@ class _IdleView extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Importez votre relevé BICI Bourse pour renseigner\n'
-                  'toutes vos positions en portefeuille en une seule fois.',
+                SizedBox(height: 8),
+                Text(
+                  'Importez votre relevé BICI Bourse pour renseigner ou synchroniser\n'
+                  'vos positions en portefeuille en une seule fois.',
                   style: TextStyle(
                     fontSize: 14,
                     color: AppColors.textSecondary,
@@ -145,35 +144,29 @@ class _IdleView extends StatelessWidget {
               ],
             ),
           ),
-
           const SizedBox(height: 32),
-
-          // Infos pratiques
-          _InfoRow(
+          const _InfoRow(
             icon: Icons.check_circle_outline,
             text: 'Relevé au format PDF numérique (non scanné)',
           ),
           const SizedBox(height: 10),
-          _InfoRow(
+          const _InfoRow(
             icon: Icons.check_circle_outline,
-            text: 'Pré-visualisez et choisissez les lignes à importer',
+            text: 'Détection automatique des titres déjà détenus en portefeuille',
           ),
           const SizedBox(height: 10),
-          _InfoRow(
+          const _InfoRow(
             icon: Icons.check_circle_outline,
-            text: 'Chaque ligne crée une opération d\'achat avec le PRU du relevé',
+            text: 'Choix de gestion par ligne : Ajuster l\'écart, Remplacer ou Cumuler',
           ),
-
           const Spacer(),
-
-          // Bouton principal
           ElevatedButton.icon(
             onPressed: () => _pickPdf(context),
             icon: const Icon(Icons.upload_file_outlined),
             label: const Text('Choisir le fichier PDF'),
           ),
           const SizedBox(height: 12),
-          Text(
+          const Text(
             'Vos données restent strictement locales.',
             style: TextStyle(
               fontSize: 12,
@@ -266,10 +259,10 @@ class _PreviewView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final result = state.parseResult!;
-    final lignes = result.lignes;
+    final diffs = state.diffs;
     final selected = state.selectedIndices;
     final notifier = ref.read(statementImportProvider.notifier);
-    final allSelected = selected.length == lignes.length;
+    final allSelected = selected.length == diffs.length;
 
     return Column(
       children: [
@@ -308,30 +301,54 @@ class _PreviewView extends StatelessWidget {
               ),
               if (result.dateReleve != null || result.numeroCompte != null) ...[
                 const SizedBox(height: 6),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     if (result.dateReleve != null)
                       _MetaChip(
                         label: 'Au ${_fmt(result.dateReleve!)}',
                         icon: Icons.calendar_today_outlined,
                       ),
-                    if (result.numeroCompte != null) ...[
-                      const SizedBox(width: 8),
+                    if (result.numeroCompte != null)
                       _MetaChip(
                         label: 'Cpt ${result.numeroCompte}',
                         icon: Icons.account_balance_outlined,
                       ),
-                    ],
-                    if (result.soldeEspeces != null) ...[
-                      const SizedBox(width: 8),
+                    if (result.soldeEspeces != null)
                       _MetaChip(
-                        label: '${_fmtNbr.format(result.soldeEspeces!)} F',
+                        label: 'Solde SGI : ${_fmtNbr.format(result.soldeEspeces!)} F',
                         icon: Icons.savings_outlined,
                       ),
-                    ],
                   ],
                 ),
               ],
+              const SizedBox(height: 8),
+              // Synthèse de comparaison avec le portefeuille
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  if (state.newCount > 0)
+                    _StatusSummaryChip(
+                      label: '${state.newCount} nouveau${state.newCount > 1 ? 'x' : ''}',
+                      color: AppColors.gain,
+                      bgColor: AppColors.gainLight,
+                    ),
+                  if (state.diffCount > 0)
+                    _StatusSummaryChip(
+                      label: '${state.diffCount} à ajuster',
+                      color: const Color(0xFFE65100),
+                      bgColor: const Color(0xFFFFF3E0),
+                    ),
+                  if (state.matchedCount > 0)
+                    _StatusSummaryChip(
+                      label: '${state.matchedCount} conforme${state.matchedCount > 1 ? 's' : ''}',
+                      color: AppColors.textSecondary,
+                      bgColor: AppColors.background,
+                    ),
+                ],
+              ),
             ],
           ),
         ),
@@ -349,12 +366,12 @@ class _PreviewView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                const Row(
                   children: [
-                    const Icon(Icons.warning_amber_outlined,
+                    Icon(Icons.warning_amber_outlined,
                         size: 16, color: Color(0xFFF57F17)),
-                    const SizedBox(width: 6),
-                    const Text(
+                    SizedBox(width: 6),
+                    Text(
                       'Avertissements',
                       style: TextStyle(
                         fontSize: 13,
@@ -386,7 +403,7 @@ class _PreviewView extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                '${lignes.length} position${lignes.length > 1 ? 's' : ''} trouvée${lignes.length > 1 ? 's' : ''}',
+                '${diffs.length} position${diffs.length > 1 ? 's' : ''} sur le relevé',
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -413,18 +430,19 @@ class _PreviewView extends StatelessWidget {
           ),
         ),
 
-        // Liste des positions
+        // Liste des positions avec diffs
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            itemCount: lignes.length,
+            itemCount: diffs.length,
             itemBuilder: (context, index) {
-              final ligne = lignes[index];
+              final diff = diffs[index];
               final isSelected = selected.contains(index);
               return _StatementLineCard(
-                ligne: ligne,
+                diff: diff,
                 isSelected: isSelected,
-                onTap: () => notifier.toggleLine(index),
+                onToggle: () => notifier.toggleLine(index),
+                onModeChanged: (mode) => notifier.setLineMode(index, mode),
               );
             },
           ),
@@ -474,6 +492,38 @@ class _PreviewView extends StatelessWidget {
   }
 }
 
+class _StatusSummaryChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final Color bgColor;
+
+  const _StatusSummaryChip({
+    required this.label,
+    required this.color,
+    required this.bgColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
 class _MetaChip extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -509,25 +559,28 @@ class _MetaChip extends StatelessWidget {
 }
 
 class _StatementLineCard extends StatelessWidget {
-  final StatementLine ligne;
+  final StatementLineDiff diff;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback onToggle;
+  final ValueChanged<LineImportMode> onModeChanged;
 
   static final _fmtNbr = NumberFormat('#,##0', 'fr_FR');
 
   const _StatementLineCard({
-    required this.ligne,
+    required this.diff,
     required this.isSelected,
-    required this.onTap,
+    required this.onToggle,
+    required this.onModeChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    final ligne = diff.line;
     final pvLatente = (ligne.cours - ligne.prixRevient) * ligne.quantite;
     final isPvPositive = pvLatente >= 0;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: onToggle,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         margin: const EdgeInsets.only(bottom: 8),
@@ -541,116 +594,279 @@ class _StatementLineCard extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Checkbox
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isSelected ? AppColors.primary : Colors.transparent,
-                  border: Border.all(
-                    color: isSelected ? AppColors.primary : AppColors.border,
-                    width: 1.5,
-                  ),
-                ),
-                child: isSelected
-                    ? const Icon(Icons.check, size: 14, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(width: 12),
-
-              // Infos titre
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          ligne.codeTitre,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(4),
-                            border:
-                                Border.all(color: AppColors.border, width: 0.6),
-                          ),
-                          child: Text(
-                            '${ligne.quantite} titres',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      ligne.libelle,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        _ValueLabel(
-                          label: 'PRU',
-                          value: '${_fmtNbr.format(ligne.prixRevient)} F',
-                        ),
-                        const SizedBox(width: 10),
-                        _ValueLabel(
-                          label: 'Cours',
-                          value: '${_fmtNbr.format(ligne.cours)} F',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Plus-value latente
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${isPvPositive ? '+' : ''}${_fmtNbr.format(pvLatente)} F',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: isPvPositive ? AppColors.gain : AppColors.loss,
+                  // Checkbox
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: 22,
+                    height: 22,
+                    margin: const EdgeInsets.only(top: 2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected ? AppColors.primary : Colors.transparent,
+                      border: Border.all(
+                        color: isSelected ? AppColors.primary : AppColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check, size: 14, color: Colors.white)
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Infos titre
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              ligne.codeTitre,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(4),
+                                border:
+                                    Border.all(color: AppColors.border, width: 0.6),
+                              ),
+                              child: Text(
+                                '${ligne.quantite} titres',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          ligne.libelle,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            _ValueLabel(
+                              label: 'PRU',
+                              value: '${_fmtNbr.format(ligne.prixRevient)} F',
+                            ),
+                            const SizedBox(width: 10),
+                            _ValueLabel(
+                              label: 'Cours',
+                              value: '${_fmtNbr.format(ligne.cours)} F',
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${_fmtNbr.format(ligne.quantite * ligne.cours)} F',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textTertiary,
-                    ),
+
+                  // Plus-value latente
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${isPvPositive ? '+' : ''}${_fmtNbr.format(pvLatente)} F',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isPvPositive ? AppColors.gain : AppColors.loss,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_fmtNbr.format(ligne.quantite * ligne.cours)} F',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
+
+              // ─── Section Détection et Gestion des positions existantes ──────
+              const SizedBox(height: 10),
+              if (!diff.existsInPortfolio)
+                // Titre nouveau
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.gainLight,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: AppColors.gain.withValues(alpha: 0.3),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_circle_outline, size: 12, color: AppColors.gain),
+                        SizedBox(width: 4),
+                        Text(
+                          'Nouveau titre',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.gain,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else if (diff.isQuantityMatch)
+                // Titre déjà conforme
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F8E9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFC5E1A5), width: 0.8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline,
+                          size: 14, color: Color(0xFF558B2F)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Déjà en portefeuille : ${diff.existingQuantity} titres (position conforme)',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF33691E),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                // Écart constaté avec le portefeuille existant
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8E1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFFE082), width: 0.8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.swap_horiz_rounded,
+                              size: 16, color: Color(0xFFE65100)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'En portefeuille : ${diff.existingQuantity} titres (PRU ${_fmtNbr.format(diff.existingPru)} F)  ➔  '
+                              'Écart : ${diff.quantityDiff > 0 ? '+${diff.quantityDiff}' : '${diff.quantityDiff}'} titres',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFE65100),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Sélecteur de stratégie d'import
+                      Row(
+                        children: [
+                          _ModeChoiceChip(
+                            label: 'Ajuster (${diff.quantityDiff > 0 ? '+${diff.quantityDiff}' : '${diff.quantityDiff}'})',
+                            isSelected: diff.mode == LineImportMode.ajuster,
+                            onTap: () => onModeChanged(LineImportMode.ajuster),
+                          ),
+                          const SizedBox(width: 6),
+                          _ModeChoiceChip(
+                            label: 'Remplacer (${diff.statementQuantity})',
+                            isSelected: diff.mode == LineImportMode.remplacer,
+                            onTap: () => onModeChanged(LineImportMode.remplacer),
+                          ),
+                          const SizedBox(width: 6),
+                          _ModeChoiceChip(
+                            label: 'Cumuler',
+                            isSelected: diff.mode == LineImportMode.cumuler,
+                            onTap: () => onModeChanged(LineImportMode.cumuler),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeChoiceChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ModeChoiceChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: 0.8,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? Colors.white : AppColors.textPrimary,
           ),
         ),
       ),
@@ -733,8 +949,8 @@ class _SuccessView extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '$count position${count > 1 ? 's' : ''} enregistrée${count > 1 ? 's' : ''} '
-            'dans votre portefeuille.',
+            '$count opération${count > 1 ? 's' : ''} enregistrée${count > 1 ? 's' : ''} '
+            'pour mettre à jour votre portefeuille.',
             style: const TextStyle(
               fontSize: 15,
               color: AppColors.textSecondary,
@@ -744,7 +960,7 @@ class _SuccessView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Vérifiez vos positions dans l\'onglet Portefeuille.',
+            'Vos positions sont désormais synchronisées avec votre relevé.',
             style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
             textAlign: TextAlign.center,
           ),
