@@ -7,6 +7,7 @@ import '../market/market_providers.dart';
 import '../market/market_sync_service.dart';
 import 'portfolio_display_mode.dart';
 import 'portfolio_providers.dart';
+import 'widgets/portfolio_session_history_card.dart';
 import 'widgets/portfolio_summary_card.dart';
 import 'widgets/position_list_tile.dart';
 
@@ -28,6 +29,19 @@ class PortfolioScreen extends ConsumerWidget {
     ref.watch(lastMarketUpdateTimeProvider);
     ref.watch(isMarketRefreshingProvider);
 
+    final String displayModeLabel;
+    switch (displayMode) {
+      case PortfolioDisplayMode.total:
+        displayModeLabel = 'Affichage : Plus-value globale (PRU)';
+        break;
+      case PortfolioDisplayMode.session:
+        displayModeLabel = 'Affichage : Séance en direct';
+        break;
+      case PortfolioDisplayMode.yesterday:
+        displayModeLabel = 'Affichage : Gagné hier (Veille)';
+        break;
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F5F0), // Fond beige élégant du mockup
       body: SafeArea(
@@ -40,9 +54,15 @@ class PortfolioScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Synthèse du portefeuille : en-tête épuré, toggle, pill de gains, solde disponible
+                  // Synthèse du portefeuille : en-tête épuré, toggle 3 boutons, pill de gains, solde disponible
                   PortfolioSummaryCard(summary: summary),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
+
+                  // Historique jour par jour des séances (Cas 3)
+                  if (positions.isNotEmpty && summary.sessionHistory.isNotEmpty) ...[
+                    PortfolioSessionHistoryCard(history: summary.sessionHistory),
+                    const SizedBox(height: 14),
+                  ],
 
                   // Carte contenant la liste des positions
                   if (positions.isEmpty)
@@ -64,9 +84,7 @@ class PortfolioScreen extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            displayMode == PortfolioDisplayMode.session
-                                ? 'Affichage : Performance séance'
-                                : 'Affichage : Plus-value globale',
+                            displayModeLabel,
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,

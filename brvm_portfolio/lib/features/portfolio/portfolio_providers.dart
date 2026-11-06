@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../core/models/operation.dart';
 import '../../core/models/position.dart';
 import '../../core/models/portfolio_summary.dart';
@@ -54,6 +55,15 @@ final portfolioPositionsProvider = Provider<List<Position>>((ref) {
       final dailyVariation = stock?.dailyVariation ?? 0.0;
       final pru = prus[code] ?? currentPrice.toDouble();
 
+      // Extraction du cours de l'avant-veille (J-2) depuis l'historique des cotations
+      final hist = stock?.historicalPrices ?? const [];
+      int dayBeforeYesterday = prevPrice;
+      if (hist.length >= 3) {
+        dayBeforeYesterday = hist[hist.length - 3].round();
+      } else if (hist.length == 2 && hist.last.round() == currentPrice) {
+        dayBeforeYesterday = hist.first.round();
+      }
+
       positions.add(
         Position(
           stockCode: code,
@@ -62,7 +72,9 @@ final portfolioPositionsProvider = Provider<List<Position>>((ref) {
           pru: pru,
           currentPrice: currentPrice,
           previousClosePrice: prevPrice,
+          dayBeforeYesterdayPrice: dayBeforeYesterday,
           dailyVariation: dailyVariation,
+          historicalPrices: hist,
         ),
       );
     }
@@ -98,35 +110,122 @@ final cashBalanceProvider = Provider<int>((ref) {
 final portfolioSummaryProvider = Provider<PortfolioSummary>((ref) {
   final positions = ref.watch(portfolioPositionsProvider);
   final cashBalance = ref.watch(cashBalanceProvider);
+  final marketDate = ref.watch(lastMarketUpdateTimeProvider);
 
   int totalValuation = 0;
   int totalInvested = 0;
   int dailyGainLoss = 0;
+  int yesterdayValuation = 0;
+  int yesterdayGainLoss = 0;
 
   for (final pos in positions) {
     totalValuation += pos.totalValuation;
     totalInvested += pos.investedAmount;
     dailyGainLoss += pos.dailyGainLoss;
+    yesterdayValuation += pos.yesterdayValuation;
+    yesterdayGainLoss += pos.yesterdayGainLoss;
   }
 
+  // Performance globale
   final totalGainLoss = totalValuation - totalInvested;
   final totalGainLossPercent = totalInvested > 0
       ? (totalGainLoss / totalInvested) * 100.0
       : 0.0;
 
+  // Performance Aujourd'hui vs Veille
   final previousDayValuation = totalValuation - dailyGainLoss;
   final dailyGainLossPercent = previousDayValuation > 0
       ? (dailyGainLoss / previousDayValuation) * 100.0
       : 0.0;
+
+  // Performance Veille vs Avant-veille
+  final dayBeforeYesterdayValuation = yesterdayValuation - yesterdayGainLoss;
+  final yesterdayGainLossPercent = dayBeforeYesterdayValuation > 0
+      ? (yesterdayGainLoss / dayBeforeYesterdayValuation) * 100.0
+      : 0.0;
+
+  // Construction de l'historique jour par jour des dernières séances (Cas 3)
+  final List<DailySessionPerformance> history = [];
+
+  // Séance 1 : Aujourd'hui (séance en cours)
+  history.add(
+    DailySessionPerformance(
+      date: marketDate,
+      dateLabel: "Aujourd'hui (${DateFormat('dd MMM', 'fr_FR').format(marketDate)})",
+      valuation: totalValuation,
+      gainLoss: dailyGainLoss,
+      variationPercent: dailyGainLossPercent,
+    ),
+  );
+
+  // Séance 2 : Hier (clôture de la veille)
+  final yesterdayDate = marketDate.subtract(const Duration(days: 1));
+  history.add(
+    DailySessionPerformance(
+      date: yesterdayDate,
+      dateLabel: "Hier (${DateFormat('dd MMM', 'fr_FR').format(yesterdayDate)})",
+      valuation: yesterdayValuation,
+      gainLoss: yesterdayGainLoss,
+      variationPercent: yesterdayGainLossPercent,
+    ),
+  );
+
+  // Séances antérieures reconstituées depuis historicalPrices (jusqu'à 3 séances de plus)
+  for (int step = 2; step <= 4; step++) {
+    int pastValuation = 0;
+    int pastPriorValuation = 0;
+    bool hasData = false;
+
+    for (final pos in positions) {
+      final hist = pos.historicalPrices;
+      final targetIdx = hist.length - 1 - step;
+      final priorIdx = targetIdx - 1;
+
+      if (targetIdx >= 0 && targetIdx < hist.length) {
+        final p = hist[targetIdx].round();
+        pastValuation += pos.quantity * p;
+        hasData = true;
+
+        if (priorIdx >= 0 && priorIdx < hist.length) {
+          pastPriorValuation += pos.quantity * hist[priorIdx].round();
+        } else {
+          pastPriorValuation += pos.quantity * p;
+        }
+      } else {
+        pastValuation += pos.yesterdayValuation;
+        pastPriorValuation += pos.yesterdayValuation;
+      }
+    }
+
+    if (hasData && pastPriorValuation > 0) {
+      final pastGain = pastValuation - pastPriorValuation;
+      final pastVariation = (pastGain / pastPriorValuation) * 100.0;
+      final pastDate = marketDate.subtract(Duration(days: step));
+
+      history.add(
+        DailySessionPerformance(
+          date: pastDate,
+          dateLabel: DateFormat('d MMMM yyyy', 'fr_FR').format(pastDate),
+          valuation: pastValuation,
+          gainLoss: pastGain,
+          variationPercent: pastVariation,
+        ),
+      );
+    }
+  }
 
   return PortfolioSummary(
     totalValuation: totalValuation,
     cashBalance: cashBalance,
     dailyGainLoss: dailyGainLoss,
     dailyGainLossPercent: dailyGainLossPercent,
+    yesterdayValuation: yesterdayValuation,
+    yesterdayGainLoss: yesterdayGainLoss,
+    yesterdayGainLossPercent: yesterdayGainLossPercent,
     totalGainLoss: totalGainLoss,
     totalGainLossPercent: totalGainLossPercent,
-    marketDate: ref.watch(lastMarketUpdateTimeProvider),
+    marketDate: marketDate,
     positionsCount: positions.length,
+    sessionHistory: history,
   );
 });

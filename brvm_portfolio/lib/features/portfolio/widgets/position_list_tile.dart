@@ -8,9 +8,9 @@ import '../portfolio_display_mode.dart';
 /// Ligne d'affichage d'une position détenue dans le portefeuille.
 /// Présente :
 /// - Le ticker, le nombre de titres et le nom du titre
-/// - Le détail des prix (PRU & Cours en mode Total, Cours & Veille en mode Séance)
+/// - Le détail des prix selon le mode (Total: PRU/Cours, Séance: Cours/Veille, Hier: Veille/Avant-veille)
 /// - La valorisation actuelle
-/// - La plus-value / moins-value (totale ou séance selon le mode) avec label explicite
+/// - La plus-value / moins-value (totale, séance ou hier selon le mode) avec label explicite
 /// - Le poids du titre dans le portefeuille avec une barre de progression colorée (vert/rouge).
 class PositionListTile extends StatelessWidget {
   final Position position;
@@ -40,10 +40,33 @@ class PositionListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSession = displayMode == PortfolioDisplayMode.session;
+    final isYesterday = displayMode == PortfolioDisplayMode.yesterday;
 
-    // Gain/Perte à afficher : total (vs PRU) ou journalier (vs veille)
-    final gainLoss = isSession ? position.dailyGainLoss : position.totalGainLoss;
-    final gainLossPct = isSession ? position.dailyVariation : position.totalGainLossPercent;
+    // Gain/Perte et variation selon le mode actif
+    final int gainLoss;
+    final double gainLossPct;
+    final String modePrefix;
+    final String priceDetails;
+
+    if (isYesterday) {
+      gainLoss = position.yesterdayGainLoss;
+      gainLossPct = position.yesterdayVariation;
+      modePrefix = 'Hier: ';
+      priceDetails =
+          '${position.stockName} • Veille ${AppFormatters.formatInteger(position.previousClosePrice)} F • Avant-veille ${AppFormatters.formatInteger(position.effectiveDayBeforeYesterdayPrice)} F';
+    } else if (isSession) {
+      gainLoss = position.dailyGainLoss;
+      gainLossPct = position.dailyVariation;
+      modePrefix = 'Jour: ';
+      priceDetails =
+          '${position.stockName} • Cours ${AppFormatters.formatInteger(position.currentPrice)} F • Veille ${AppFormatters.formatInteger(position.previousClosePrice)} F';
+    } else {
+      gainLoss = position.totalGainLoss;
+      gainLossPct = position.totalGainLossPercent;
+      modePrefix = 'Total: ';
+      priceDetails =
+          '${position.stockName} • PRU ${AppFormatters.formatInteger(position.pru.round())} F • Cours ${AppFormatters.formatInteger(position.currentPrice)} F';
+    }
 
     final isGain = gainLoss > 0;
     final isLoss = gainLoss < 0;
@@ -59,11 +82,6 @@ class PositionListTile extends StatelessWidget {
 
     // Formatage du poids (ex: "15,2 %")
     final String weightStr = '${NumberFormat('0.0', 'fr_FR').format(weightPercent)} %';
-
-    // Sous-titre détaillant les prix servant au calcul selon le mode
-    final String priceDetails = isSession
-        ? '${position.stockName} • Cours ${AppFormatters.formatInteger(position.currentPrice)} F • Veille ${AppFormatters.formatInteger(position.previousClosePrice)} F'
-        : '${position.stockName} • PRU ${AppFormatters.formatInteger(position.pru.round())} F • Cours ${AppFormatters.formatInteger(position.currentPrice)} F';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -146,7 +164,7 @@ class PositionListTile extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              isSession ? 'Jour: ' : 'Total: ',
+                              modePrefix,
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,

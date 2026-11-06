@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:brvm_portfolio/core/constants.dart';
 import 'package:brvm_portfolio/core/models/position.dart';
+import 'package:brvm_portfolio/features/portfolio/portfolio_display_mode.dart';
 import 'package:brvm_portfolio/features/portfolio/widgets/position_list_tile.dart';
 
 void main() {
@@ -89,6 +90,62 @@ void main() {
 
       final animation = progressIndicator.valueColor as AlwaysStoppedAnimation<Color>;
       expect(animation.value, equals(AppColors.loss));
+    });
+
+    testWidgets('affiche les performances de la veille en mode PortfolioDisplayMode.yesterday', (tester) async {
+      const posHier = Position(
+        stockCode: 'CIEC',
+        stockName: 'CIE CI',
+        quantity: 50,
+        pru: 5000.0,
+        currentPrice: 5500,
+        previousClosePrice: 5400, // Veille
+        dayBeforeYesterdayPrice: 5200, // Avant-veille -> Gain veille = 50 * (5400 - 5200) = +10 000 FCFA
+        dailyVariation: 1.85,
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: PositionListTile(
+              position: posHier,
+              portfolioTotalValuation: 1000000,
+              displayMode: PortfolioDisplayMode.yesterday,
+            ),
+          ),
+        ),
+      );
+
+      // Vérifie l'indication "Hier:" et le montant gagné la veille
+      expect(find.textContaining('Hier:'), findsOneWidget);
+      expect(find.textContaining('+10 000 FCFA'), findsOneWidget);
+      expect(find.textContaining('Veille 5 400 F'), findsOneWidget);
+      expect(find.textContaining('Avant-veille 5 200 F'), findsOneWidget);
+    });
+  });
+
+  group('Position - Calculs de la veille (Cas 2)', () {
+    test('calcule correctement yesterdayGainLoss et yesterdayValuation', () {
+      const pos = Position(
+        stockCode: 'SNTS',
+        stockName: 'SONATEL',
+        quantity: 100,
+        pru: 18000.0,
+        currentPrice: 19500,
+        previousClosePrice: 19000,
+        dayBeforeYesterdayPrice: 18500,
+        dailyVariation: 2.63,
+      );
+
+      // Valorisation à la veille = 100 * 19000 = 1 900 000 FCFA
+      expect(pos.yesterdayValuation, equals(1900000));
+
+      // Gain de la veille = 100 * (19000 - 18500) = +50 000 FCFA
+      expect(pos.yesterdayGainLoss, equals(50000));
+      expect(pos.isGainingYesterday, isTrue);
+
+      // Variation de la veille = (19000 - 18500) / 18500 * 100 = ~2.70%
+      expect(pos.yesterdayVariation, closeTo(2.70, 0.01));
     });
   });
 }

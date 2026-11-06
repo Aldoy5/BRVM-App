@@ -80,9 +80,16 @@ class PortfolioSummaryCard extends ConsumerWidget {
               ),
               const Divider(height: 20),
               _buildHelpSection(
-                title: '📅 Mode « Aujourd\'hui »',
+                title: '⚡ Mode « Aujourd\'hui »',
                 content:
                     '• Gain / Perte du jour : Variation financière sur la séance actuelle par rapport au cours de clôture de la veille : Quantité × (Cours - Cours Veille).',
+              ),
+              const Divider(height: 20),
+              _buildHelpSection(
+                title: '⏪ Mode « Hier (Veille) »',
+                content:
+                    '• Gain réalisé la veille : Résultat net obtenu lors de la journée d\'hier par rapport à l\'avant-veille : Quantité × (Cours Veille - Cours Avant-veille).\n'
+                    '• Valorisation de la veille : Montant total de votre portefeuille à la clôture de la veille.',
               ),
               const Divider(height: 20),
               _buildHelpSection(
@@ -189,7 +196,35 @@ class PortfolioSummaryCard extends ConsumerWidget {
     final dateStr = DateFormat('dd/MM/yyyy').format(summary.marketDate);
     final user = ref.watch(currentUserProvider);
     final displayMode = ref.watch(portfolioDisplayModeProvider);
-    final isSession = displayMode == PortfolioDisplayMode.session;
+
+    // Détermination des libellés et montants selon le mode
+    final String pillLabel;
+    final String pillSubtitle;
+    final int pillAmount;
+    final double pillPercent;
+
+    switch (displayMode) {
+      case PortfolioDisplayMode.total:
+        pillLabel = "Plus-value totale (vs PRU)";
+        pillSubtitle = "Plus-value latente calculée par rapport au coût de revient (PRU)";
+        pillAmount = summary.totalGainLoss;
+        pillPercent = summary.totalGainLossPercent;
+        break;
+      case PortfolioDisplayMode.session:
+        pillLabel = "Gain du jour (vs veille)";
+        pillSubtitle =
+            "Séance en direct par rapport à la clôture veille (${formatFCFA(summary.yesterdayValuation)})";
+        pillAmount = summary.dailyGainLoss;
+        pillPercent = summary.dailyGainLossPercent;
+        break;
+      case PortfolioDisplayMode.yesterday:
+        pillLabel = "Gagné la veille (Hier)";
+        pillSubtitle =
+            "Clôture d'hier : ${formatFCFA(summary.yesterdayValuation)} (gain vs avant-veille)";
+        pillAmount = summary.yesterdayGainLoss;
+        pillPercent = summary.yesterdayGainLossPercent;
+        break;
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,18 +329,16 @@ class PortfolioSummaryCard extends ConsumerWidget {
         ),
         const SizedBox(height: 14),
 
-        // Commutateur Global / Séance (toggle animé style iOS)
+        // Commutateur à 3 boutons : [ Depuis l'achat | Aujourd'hui | Hier ]
         _buildDisplayModeToggle(ref),
         const SizedBox(height: 10),
 
         // Pill de performance dynamique selon le mode sélectionné
         _buildGainPill(
-          label: isSession ? "Gain du jour (vs veille)" : "Plus-value totale (vs PRU)",
-          subtitle: isSession
-              ? "Variation sur la séance par rapport au cours de la veille"
-              : "Plus-value latente calculée par rapport au coût de revient (PRU)",
-          amount: isSession ? summary.dailyGainLoss : summary.totalGainLoss,
-          percent: isSession ? summary.dailyGainLossPercent : summary.totalGainLossPercent,
+          label: pillLabel,
+          subtitle: pillSubtitle,
+          amount: pillAmount,
+          percent: pillPercent,
         ),
         const SizedBox(height: 14),
 
@@ -376,7 +409,7 @@ class PortfolioSummaryCard extends ConsumerWidget {
     );
   }
 
-  /// Construit le commutateur à bascule « Depuis l'achat » / « Aujourd'hui ».
+  /// Construit le commutateur à 3 positions : « Depuis l'achat », « Aujourd'hui », « Hier (Veille) ».
   Widget _buildDisplayModeToggle(WidgetRef ref) {
     final mode = ref.watch(portfolioDisplayModeProvider);
     return Container(
@@ -389,17 +422,24 @@ class PortfolioSummaryCard extends ConsumerWidget {
         children: [
           _buildToggleButton(
             ref: ref,
-            label: "Depuis l'achat (PRU)",
+            label: "Depuis l'achat",
             icon: Icons.trending_up,
             mode: PortfolioDisplayMode.total,
             isSelected: mode == PortfolioDisplayMode.total,
           ),
           _buildToggleButton(
             ref: ref,
-            label: "Aujourd'hui (Séance)",
+            label: "Aujourd'hui",
             icon: Icons.today,
             mode: PortfolioDisplayMode.session,
             isSelected: mode == PortfolioDisplayMode.session,
+          ),
+          _buildToggleButton(
+            ref: ref,
+            label: "Hier (Veille)",
+            icon: Icons.history,
+            mode: PortfolioDisplayMode.yesterday,
+            isSelected: mode == PortfolioDisplayMode.yesterday,
           ),
         ],
       ),
@@ -440,16 +480,20 @@ class PortfolioSummaryCard extends ConsumerWidget {
             children: [
               Icon(
                 icon,
-                size: 14,
+                size: 13,
                 color: isSelected ? AppColors.primary : AppColors.textTertiary,
               ),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.textPrimary : AppColors.textTertiary,
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? AppColors.textPrimary : AppColors.textTertiary,
+                  ),
                 ),
               ),
             ],
@@ -495,12 +539,14 @@ class PortfolioSummaryCard extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Text(

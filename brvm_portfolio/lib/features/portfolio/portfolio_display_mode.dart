@@ -5,22 +5,19 @@ enum PortfolioDisplayMode {
   /// Performance globale (depuis l'achat / PRU).
   total,
 
-  /// Performance de la séance (vs clôture de la veille).
+  /// Performance de la séance en direct (Aujourd'hui vs Clôture veille).
   session,
+
+  /// Ce qui a été gagné la veille (Clôture veille vs Avant-veille).
+  yesterday,
 }
 
-/// Notifier qui gère le mode d'affichage sélectionné (toggle Global / Séance).
+/// Notifier qui gère le mode d'affichage sélectionné (toggle Global / Aujourd'hui / Hier).
 class PortfolioDisplayModeNotifier extends Notifier<PortfolioDisplayMode> {
   @override
   PortfolioDisplayMode build() => PortfolioDisplayMode.total;
 
   void setMode(PortfolioDisplayMode mode) => state = mode;
-
-  void toggle() {
-    state = state == PortfolioDisplayMode.total
-        ? PortfolioDisplayMode.session
-        : PortfolioDisplayMode.total;
-  }
 }
 
 /// Provider du mode d'affichage du portefeuille.
