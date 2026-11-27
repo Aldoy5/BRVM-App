@@ -1,6 +1,6 @@
 {
-  "date_collecte": "2026-11-26T18:53:13.462Z",
-  "date_maj_source": "Dernière mise à jour : Jeudi, 26 novembre, 2026 - 18:45",
+  "date_collecte": "2026-11-27T18:45:27.511Z",
+  "date_maj_source": "Dernière mise à jour : Vendredi, 27 novembre, 2026 - 18:30",
   "statut_seance": "FERMEE",
   "nb_titres": 48,
   "entetes_detectees": {
@@ -17,281 +17,281 @@
     {
       "code": "ABJC",
       "nom": "SERVAIR ABIDJAN  COTE D'IVOIRE",
-      "volume": 2234,
-      "cours_veille": 2590,
-      "cours_ouverture": 2575,
-      "cours_cloture": 2590,
-      "variation_pct": 0
+      "volume": 4331,
+      "cours_veille": 2400,
+      "cours_ouverture": 2590,
+      "cours_cloture": 2400,
+      "variation_pct": -7.34
     },
     {
       "code": "BBGC",
       "nom": "BRIDGE BANK GROUP COTE D'IVOIRE",
-      "volume": 9080,
+      "volume": 10928,
       "cours_veille": 7700,
-      "cours_ouverture": 7900,
-      "cours_cloture": 7700,
-      "variation_pct": -1.28
+      "cours_ouverture": 7700,
+      "cours_cloture": 7600,
+      "variation_pct": -1.3
     },
     {
       "code": "BICB",
       "nom": "BANQUE INTERNATIONALE POUR L’INDUSTRIE ET LE COMMERCE DU BENIN",
-      "volume": 2992,
-      "cours_veille": 6900,
-      "cours_ouverture": 6995,
-      "cours_cloture": 7000,
-      "variation_pct": 0
+      "volume": 1310,
+      "cours_veille": 7100,
+      "cours_ouverture": 7000,
+      "cours_cloture": 7050,
+      "variation_pct": 0.71
     },
     {
       "code": "BICC",
       "nom": "BICI COTE D'IVOIRE",
-      "volume": 102,
-      "cours_veille": 29000,
-      "cours_ouverture": 29000,
-      "cours_cloture": 28800,
-      "variation_pct": -0.69
+      "volume": 818,
+      "cours_veille": 28000,
+      "cours_ouverture": 28800,
+      "cours_cloture": 28200,
+      "variation_pct": -2.08
     },
     {
       "code": "BNBC",
       "nom": "BERNABE COTE D'IVOIRE",
-      "volume": 1657,
+      "volume": 93,
       "cours_veille": 1650,
-      "cours_ouverture": 1675,
-      "cours_cloture": 1660,
-      "variation_pct": 0
+      "cours_ouverture": 1545,
+      "cours_cloture": 1645,
+      "variation_pct": -0.9
     },
     {
       "code": "BOAB",
       "nom": "BANK OF AFRICA BENIN",
-      "volume": 2163,
-      "cours_veille": 8000,
-      "cours_ouverture": 8075,
-      "cours_cloture": 8000,
-      "variation_pct": -0.87
+      "volume": 1941,
+      "cours_veille": 8200,
+      "cours_ouverture": 7990,
+      "cours_cloture": 8150,
+      "variation_pct": 1.88
     },
     {
       "code": "BOABF",
       "nom": "BANK OF AFRICA BURKINA FASO",
-      "volume": 2522,
-      "cours_veille": 6700,
-      "cours_ouverture": 6655,
-      "cours_cloture": 6800,
-      "variation_pct": -3.06
+      "volume": 5844,
+      "cours_veille": 7180,
+      "cours_ouverture": 6800,
+      "cours_cloture": 7310,
+      "variation_pct": 7.5
     },
     {
       "code": "BOAC",
       "nom": "BANK OF AFRICA COTE D'IVOIRE",
-      "volume": 13304,
-      "cours_veille": 10600,
-      "cours_ouverture": 10600,
-      "cours_cloture": 10590,
-      "variation_pct": -2.35
+      "volume": 8365,
+      "cours_veille": 10590,
+      "cours_ouverture": 10590,
+      "cours_cloture": 10525,
+      "variation_pct": -0.61
     },
     {
       "code": "BOAM",
       "nom": "BANK OF AFRICA MALI",
-      "volume": 8384,
-      "cours_veille": 5200,
-      "cours_ouverture": 4885,
-      "cours_cloture": 5150,
-      "variation_pct": 5.64
+      "volume": 1381,
+      "cours_veille": 5150,
+      "cours_ouverture": 5200,
+      "cours_cloture": 5205,
+      "variation_pct": 1.07
     },
     {
       "code": "BOAN",
       "nom": "BANK OF AFRICA NIGER",
-      "volume": 3917,
-      "cours_veille": 4345,
-      "cours_ouverture": 4265,
-      "cours_cloture": 4270,
-      "variation_pct": -1.84
+      "volume": 3383,
+      "cours_veille": 4490,
+      "cours_ouverture": 4270,
+      "cours_cloture": 4495,
+      "variation_pct": 5.27
     },
     {
       "code": "BOAS",
       "nom": "BANK OF AFRICA SENEGAL",
-      "volume": 4833,
-      "cours_veille": 7495,
-      "cours_ouverture": 7500,
-      "cours_cloture": 7405,
-      "variation_pct": -1.2
+      "volume": 5330,
+      "cours_veille": 7400,
+      "cours_ouverture": 7495,
+      "cours_cloture": 7455,
+      "variation_pct": 0.68
     },
     {
       "code": "CABC",
       "nom": "SICABLE COTE D'IVOIRE",
-      "volume": 764,
+      "volume": 475,
       "cours_veille": 2500,
       "cours_ouverture": 2450,
-      "cours_cloture": 2500,
-      "variation_pct": 0
+      "cours_cloture": 2490,
+      "variation_pct": -0.4
     },
     {
       "code": "CBIBF",
       "nom": "CORIS BANK INTERNATIONAL BURKINA FASO",
-      "volume": 1524,
-      "cours_veille": 23000,
+      "volume": 1048,
+      "cours_veille": 24000,
       "cours_ouverture": 23000,
-      "cours_cloture": 23050,
-      "variation_pct": -1.89
+      "cours_cloture": 24000,
+      "variation_pct": 4.12
     },
     {
       "code": "CFAC",
       "nom": "CFAO MOTORS COTE D'IVOIRE",
-      "volume": 1628,
-      "cours_veille": 1165,
-      "cours_ouverture": 1180,
-      "cours_cloture": 1160,
-      "variation_pct": -1.69
+      "volume": 1991,
+      "cours_veille": 1100,
+      "cours_ouverture": 1160,
+      "cours_cloture": 1100,
+      "variation_pct": -5.17
     },
     {
       "code": "CIEC",
       "nom": "CIE COTE D'IVOIRE",
-      "volume": 1791,
-      "cours_veille": 4050,
-      "cours_ouverture": 4245,
-      "cours_cloture": 4050,
-      "variation_pct": 1.25
+      "volume": 4895,
+      "cours_veille": 4230,
+      "cours_ouverture": 4250,
+      "cours_cloture": 4230,
+      "variation_pct": 4.44
     },
     {
       "code": "ECOC",
       "nom": "ECOBANK COTE D'IVOIRE",
-      "volume": 2383,
-      "cours_veille": 13995,
-      "cours_ouverture": 14385,
-      "cours_cloture": 14000,
-      "variation_pct": -3.45
+      "volume": 1916,
+      "cours_veille": 14000,
+      "cours_ouverture": 14000,
+      "cours_cloture": 13900,
+      "variation_pct": -0.71
     },
     {
       "code": "ETIT",
       "nom": "Ecobank Transnational Incorporated TOGO",
-      "volume": 1274667,
-      "cours_veille": 52,
-      "cours_ouverture": 49,
-      "cours_cloture": 51,
-      "variation_pct": -1.92
+      "volume": 676857,
+      "cours_veille": 50,
+      "cours_ouverture": 50,
+      "cours_cloture": 50,
+      "variation_pct": -1.96
     },
     {
       "code": "FTSC",
       "nom": "FILTISAC COTE D'IVOIRE",
-      "volume": 4435,
-      "cours_veille": 1365,
-      "cours_ouverture": 1365,
-      "cours_cloture": 1350,
-      "variation_pct": -1.1
+      "volume": 931,
+      "cours_veille": 1370,
+      "cours_ouverture": 1350,
+      "cours_cloture": 1370,
+      "variation_pct": 1.48
     },
     {
       "code": "LNBB",
       "nom": "LOTERIE NATIONALE DU BENIN",
-      "volume": 5369,
-      "cours_veille": 3895,
-      "cours_ouverture": 3800,
-      "cours_cloture": 3895,
-      "variation_pct": 2.5
+      "volume": 5452,
+      "cours_veille": 3890,
+      "cours_ouverture": 3630,
+      "cours_cloture": 3890,
+      "variation_pct": -0.13
     },
     {
       "code": "NEIC",
       "nom": "NEI-CEDA COTE D'IVOIRE",
-      "volume": 534,
+      "volume": 253,
       "cours_veille": 1790,
-      "cours_ouverture": 1675,
-      "cours_cloture": 1790,
-      "variation_pct": -0.28
+      "cours_ouverture": 1780,
+      "cours_cloture": 1780,
+      "variation_pct": -0.56
     },
     {
       "code": "NSBC",
       "nom": "NSIA BANQUE COTE D'IVOIRE",
-      "volume": 2707,
-      "cours_veille": 16125,
-      "cours_ouverture": 15000,
-      "cours_cloture": 16125,
-      "variation_pct": 7.5
+      "volume": 2222,
+      "cours_veille": 16000,
+      "cours_ouverture": 16125,
+      "cours_cloture": 15995,
+      "variation_pct": -0.81
     },
     {
       "code": "NTLC",
       "nom": "NESTLE COTE D'IVOIRE",
-      "volume": 1576,
-      "cours_veille": 11800,
-      "cours_ouverture": 11000,
-      "cours_cloture": 11700,
-      "variation_pct": -0.85
+      "volume": 643,
+      "cours_veille": 11750,
+      "cours_ouverture": 11800,
+      "cours_cloture": 11800,
+      "variation_pct": 0.85
     },
     {
       "code": "ONTBF",
       "nom": "ONATEL BURKINA FASO",
-      "volume": 5920,
-      "cours_veille": 2895,
-      "cours_ouverture": 2805,
-      "cours_cloture": 2895,
-      "variation_pct": 3.39
+      "volume": 4445,
+      "cours_veille": 2950,
+      "cours_ouverture": 2745,
+      "cours_cloture": 2950,
+      "variation_pct": 1.9
     },
     {
       "code": "ORAC",
       "nom": "ORANGE COTE D'IVOIRE",
-      "volume": 3142,
-      "cours_veille": 17200,
+      "volume": 921,
+      "cours_veille": 18000,
       "cours_ouverture": 18000,
-      "cours_cloture": 17195,
-      "variation_pct": -7.05
+      "cours_cloture": 17990,
+      "variation_pct": 4.62
     },
     {
       "code": "ORGT",
       "nom": "ORAGROUP TOGO",
-      "volume": 1109,
-      "cours_veille": 2250,
-      "cours_ouverture": 2300,
-      "cours_cloture": 2250,
-      "variation_pct": -2.6
+      "volume": 3083,
+      "cours_veille": 2300,
+      "cours_ouverture": 2295,
+      "cours_cloture": 2310,
+      "variation_pct": 2.67
     },
     {
       "code": "PALC",
       "nom": "PALM COTE D'IVOIRE",
-      "volume": 1223,
-      "cours_veille": 7250,
-      "cours_ouverture": 7300,
-      "cours_cloture": 7200,
-      "variation_pct": -0.69
+      "volume": 1155,
+      "cours_veille": 7350,
+      "cours_ouverture": 7200,
+      "cours_cloture": 7350,
+      "variation_pct": 2.08
     },
     {
       "code": "PRSC",
       "nom": "TRACTAFRIC MOTORS COTE D'IVOIRE",
-      "volume": 179,
-      "cours_veille": 3300,
-      "cours_ouverture": 3250,
-      "cours_cloture": 3300,
-      "variation_pct": 0
+      "volume": 1003,
+      "cours_veille": 3500,
+      "cours_ouverture": 3300,
+      "cours_cloture": 3450,
+      "variation_pct": 4.55
     },
     {
       "code": "SAFC",
       "nom": "SAFCA COTE D'IVOIRE",
-      "volume": 6622,
-      "cours_veille": 2900,
-      "cours_ouverture": 2700,
-      "cours_cloture": 2900,
-      "variation_pct": 0
+      "volume": 7485,
+      "cours_veille": 3115,
+      "cours_ouverture": 2855,
+      "cours_cloture": 3115,
+      "variation_pct": 7.41
     },
     {
       "code": "SCRC",
       "nom": "SUCRIVOIRE COTE D'IVOIRE",
-      "volume": 17577,
-      "cours_veille": 1390,
-      "cours_ouverture": 1345,
-      "cours_cloture": 1395,
-      "variation_pct": 4.49
+      "volume": 23019,
+      "cours_veille": 1425,
+      "cours_ouverture": 1460,
+      "cours_cloture": 1420,
+      "variation_pct": 1.79
     },
     {
       "code": "SDCC",
       "nom": "SODE COTE D'IVOIRE",
-      "volume": 710,
-      "cours_veille": 10400,
-      "cours_ouverture": 10300,
-      "cours_cloture": 10210,
-      "variation_pct": -1.83
+      "volume": 924,
+      "cours_veille": 10210,
+      "cours_ouverture": 10500,
+      "cours_cloture": 10150,
+      "variation_pct": -0.59
     },
     {
       "code": "SDSC",
       "nom": "AFRICA GLOBAL LOGISTICS COTE D'IVOIRE",
-      "volume": 8150,
-      "cours_veille": 2685,
-      "cours_ouverture": 2690,
-      "cours_cloture": 2685,
-      "variation_pct": -0.19
+      "volume": 12007,
+      "cours_veille": 2765,
+      "cours_ouverture": 2650,
+      "cours_cloture": 2755,
+      "variation_pct": 2.61
     },
     {
       "code": "SEMC",
@@ -305,29 +305,29 @@
     {
       "code": "SGBC",
       "nom": "SOCIETE GENERALE COTE D'IVOIRE",
-      "volume": 18242,
-      "cours_veille": 36495,
-      "cours_ouverture": 37000,
-      "cours_cloture": 36500,
-      "variation_pct": -1.35
+      "volume": 2039,
+      "cours_veille": 36500,
+      "cours_ouverture": 36500,
+      "cours_cloture": 36200,
+      "variation_pct": -0.82
     },
     {
       "code": "SHEC",
       "nom": "VIVO ENERGY COTE D'IVOIRE",
-      "volume": 4284,
-      "cours_veille": 1805,
-      "cours_ouverture": 1910,
-      "cours_cloture": 1795,
-      "variation_pct": -5.53
+      "volume": 6635,
+      "cours_veille": 1800,
+      "cours_ouverture": 1665,
+      "cours_cloture": 1780,
+      "variation_pct": -0.84
     },
     {
       "code": "SIBC",
       "nom": "SOCIETE IVOIRIENNE DE BANQUE COTE D'IVOIRE",
-      "volume": 16792,
-      "cours_veille": 7600,
-      "cours_ouverture": 7720,
-      "cours_cloture": 7680,
-      "variation_pct": -3.4
+      "volume": 11064,
+      "cours_veille": 7105,
+      "cours_ouverture": 7600,
+      "cours_cloture": 7115,
+      "variation_pct": -7.36
     },
     {
       "code": "SICC",
@@ -341,110 +341,110 @@
     {
       "code": "SIVC",
       "nom": "ERIUM COTE D’IVOIRE",
-      "volume": 1248,
-      "cours_veille": 1390,
-      "cours_ouverture": 1400,
+      "volume": 922,
+      "cours_veille": 1365,
+      "cours_ouverture": 1365,
       "cours_cloture": 1365,
-      "variation_pct": -2.85
+      "variation_pct": 0
     },
     {
       "code": "SLBC",
       "nom": "SOLIBRA COTE D'IVOIRE",
-      "volume": 938,
-      "cours_veille": 34005,
-      "cours_ouverture": 36600,
-      "cours_cloture": 34005,
-      "variation_pct": -6.87
+      "volume": 218,
+      "cours_veille": 35500,
+      "cours_ouverture": 34005,
+      "cours_cloture": 35000,
+      "variation_pct": 2.93
     },
     {
       "code": "SMBC",
       "nom": "SMB COTE D'IVOIRE",
-      "volume": 363,
-      "cours_veille": 17395,
-      "cours_ouverture": 17400,
-      "cours_cloture": 17395,
-      "variation_pct": 2.29
+      "volume": 1212,
+      "cours_veille": 17320,
+      "cours_ouverture": 17395,
+      "cours_cloture": 17320,
+      "variation_pct": -0.43
     },
     {
       "code": "SNTS",
       "nom": "SONATEL SENEGAL",
-      "volume": 94427,
-      "cours_veille": 3690,
-      "cours_ouverture": 3750,
-      "cours_cloture": 3690,
-      "variation_pct": -1.6
+      "volume": 98876,
+      "cours_veille": 3515,
+      "cours_ouverture": 3650,
+      "cours_cloture": 3575,
+      "variation_pct": -3.12
     },
     {
       "code": "SOGC",
       "nom": "SOGB COTE D'IVOIRE",
-      "volume": 1324,
-      "cours_veille": 7200,
-      "cours_ouverture": 7200,
+      "volume": 624,
+      "cours_veille": 7225,
+      "cours_ouverture": 7225,
       "cours_cloture": 7230,
-      "variation_pct": -0.28
+      "variation_pct": 0
     },
     {
       "code": "SPHC",
       "nom": "SAPH COTE D'IVOIRE",
-      "volume": 660,
-      "cours_veille": 7440,
+      "volume": 2111,
+      "cours_veille": 7600,
       "cours_ouverture": 7450,
-      "cours_cloture": 7450,
-      "variation_pct": 0.13
+      "cours_cloture": 7600,
+      "variation_pct": 2.01
     },
     {
       "code": "STAC",
       "nom": "SETAO COTE D'IVOIRE",
-      "volume": 5224,
+      "volume": 2927,
       "cours_veille": 2390,
-      "cours_ouverture": 2140,
+      "cours_ouverture": 2380,
       "cours_cloture": 2390,
-      "variation_pct": 3.91
+      "variation_pct": 0
     },
     {
       "code": "STBC",
       "nom": "SITAB COTE D'IVOIRE",
-      "volume": 1477,
-      "cours_veille": 20295,
-      "cours_ouverture": 20295,
+      "volume": 447,
+      "cours_veille": 20000,
+      "cours_ouverture": 20000,
       "cours_cloture": 20000,
-      "variation_pct": -1.48
+      "variation_pct": 0
     },
     {
       "code": "TTLC",
       "nom": "TOTALENERGIES MARKETING COTE D'IVOIRE",
-      "volume": 6856,
-      "cours_veille": 2950,
-      "cours_ouverture": 2750,
-      "cours_cloture": 2950,
-      "variation_pct": -0.67
+      "volume": 1443,
+      "cours_veille": 2900,
+      "cours_ouverture": 2940,
+      "cours_cloture": 2900,
+      "variation_pct": -1.69
     },
     {
       "code": "TTLS",
       "nom": "TOTALENERGIES MARKETING SENEGAL",
-      "volume": 8663,
-      "cours_veille": 3500,
+      "volume": 4081,
+      "cours_veille": 3315,
       "cours_ouverture": 3500,
-      "cours_cloture": 3500,
-      "variation_pct": 0
+      "cours_cloture": 3315,
+      "variation_pct": -5.29
     },
     {
       "code": "UNLC",
       "nom": "UNILEVER COTE D'IVOIRE",
-      "volume": 21,
+      "volume": 8,
       "cours_veille": 38850,
-      "cours_ouverture": 38850,
+      "cours_ouverture": 38855,
       "cours_cloture": 38850,
-      "variation_pct": -7.5
+      "variation_pct": 0
     },
     {
       "code": "UNXC",
       "nom": "UNIWAX COTE D'IVOIRE",
-      "volume": 6956,
-      "cours_veille": 1690,
+      "volume": 7679,
+      "cours_veille": 1700,
       "cours_ouverture": 1690,
-      "cours_cloture": 1690,
-      "variation_pct": 0
+      "cours_cloture": 1700,
+      "variation_pct": 0.59
     }
   ]
 }
